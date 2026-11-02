@@ -1,21 +1,10 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import styles from "../dashboard.module.css";
-import {
-  LayoutDashboard,
-  Users,
-  GraduationCap,
-  Calendar,
-  Settings,
-  LogOut,
-  BrainCircuit,
-  CreditCard,
-  Video,
-  FileText
-} from "lucide-react";
-import Link from "next/link";
+import { LogOut } from "lucide-react";
 import Image from "next/image";
 import { cookies } from "next/headers";
+import SidebarNav from "./SidebarNav";
 
 export default async function DashboardLayout({
   children,
@@ -25,13 +14,23 @@ export default async function DashboardLayout({
   const cookieStore = await cookies();
   const adminSession = cookieStore.get("sosakai_admin_session");
 
-  let currentUser: { full_name?: string; email?: string } | null = null;
+  let currentUser: { full_name?: string; email?: string; role?: string } | null = null;
 
-  if (adminSession?.value === "superadmin_active_token") {
-    currentUser = {
-      full_name: "Super Administrador",
-      email: "superadmin@admin.com",
-    };
+  if (adminSession?.value) {
+    try {
+      const parsed = JSON.parse(adminSession.value);
+      currentUser = {
+        full_name: parsed.name || "Administrador",
+        email: parsed.email || "admin@admin.com",
+        role: parsed.role || "Admin",
+      };
+    } catch {
+      currentUser = {
+        full_name: "Super Administrador",
+        email: "superadmin@admin.com",
+        role: "Super Admin",
+      };
+    }
   } else {
     try {
       const supabase = await createClient();
@@ -43,6 +42,7 @@ export default async function DashboardLayout({
         currentUser = {
           full_name: user.user_metadata?.full_name || user.email || "Director",
           email: user.email,
+          role: user.user_metadata?.role || "Admin",
         };
       }
     } catch {
@@ -54,7 +54,6 @@ export default async function DashboardLayout({
     return redirect("/login");
   }
 
-  // Admin/Director layout based on requested modules
   return (
     <div className={styles.dashboardLayout}>
       <aside className={styles.sidebar}>
@@ -73,52 +72,7 @@ export default async function DashboardLayout({
           </div>
         </div>
         
-        <nav className={styles.navMenu}>
-          <div className={styles.navSectionTitle}>Principal</div>
-          <Link href="/dashboard" className={`${styles.navItem} ${styles.active}`}>
-            <LayoutDashboard size={20} />
-            <span>Dashboard</span>
-          </Link>
-          <Link href="/dashboard/ia" className={styles.navItem}>
-            <BrainCircuit size={20} />
-            <span>IA Integrada</span>
-          </Link>
-
-          <div className={styles.navSectionTitle} style={{ marginTop: '1rem' }}>Académico</div>
-          <Link href="/dashboard/alumnos" className={styles.navItem}>
-            <Users size={20} />
-            <span>Alumnos y Padres</span>
-          </Link>
-          <Link href="/dashboard/estructura" className={styles.navItem}>
-            <GraduationCap size={20} />
-            <span>Estructura Académica</span>
-          </Link>
-          <Link href="/dashboard/asistencia" className={styles.navItem}>
-            <Calendar size={20} />
-            <span>Asistencia Inteligente</span>
-          </Link>
-          
-          <div className={styles.navSectionTitle} style={{ marginTop: '1rem' }}>Recursos</div>
-          <Link href="/dashboard/archivos" className={styles.navItem}>
-            <FileText size={20} />
-            <span>Archivo Digital</span>
-          </Link>
-          <Link href="/dashboard/clases" className={styles.navItem}>
-            <Video size={20} />
-            <span>Aula Virtual</span>
-          </Link>
-          <Link href="/dashboard/pagos" className={styles.navItem}>
-            <CreditCard size={20} />
-            <span>Finanzas</span>
-          </Link>
-
-          <div style={{ flex: 1 }}></div>
-
-          <Link href="/dashboard/settings" className={styles.navItem}>
-            <Settings size={20} />
-            <span>Configuración</span>
-          </Link>
-        </nav>
+        <SidebarNav />
 
         <div className={styles.sidebarFooter}>
           <div className={styles.userProfile}>
@@ -127,7 +81,7 @@ export default async function DashboardLayout({
             </div>
             <div className={styles.userInfo}>
               <h4>{currentUser.full_name || "Super Admin"}</h4>
-              <p>{currentUser.email || "Administrador"}</p>
+              <p>{currentUser.role ? `${currentUser.role} • ${currentUser.email}` : currentUser.email}</p>
             </div>
           </div>
           <form action="/auth/signout" method="post" style={{ marginTop: '1rem' }}>
