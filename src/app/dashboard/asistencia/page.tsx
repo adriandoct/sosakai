@@ -24,11 +24,11 @@ const attendanceData = [
 ];
 
 const recentScans = [
-  { id: 1, name: "Mateo García", module: "DOJO CODE", time: "08:05 AM", status: "presente", avatar: "MG" },
-  { id: 2, name: "Sofía López", module: "DOJO ENGLISH", time: "08:12 AM", status: "retardo", avatar: "SL" },
-  { id: 3, name: "Diego Fernández", module: "DOJO ROBOTICS", time: "08:20 AM", status: "retardo", avatar: "DF" },
+  { id: 1, name: "Mateo García", module: "DOJO INGLÉS", time: "08:05 AM", status: "presente", avatar: "MG" },
+  { id: 2, name: "Sofía López", module: "DOJO ROBÓTICA", time: "08:12 AM", status: "retardo", avatar: "SL" },
+  { id: 3, name: "Diego Fernández", module: "DOJO ROBÓTICA", time: "08:20 AM", status: "retardo", avatar: "DF" },
   { id: 4, name: "Valentina Ruiz", module: "DOJO KARATE", time: "--:--", status: "ausente", avatar: "VR" },
-  { id: 5, name: "Lucas Torres", module: "DOJO CODE", time: "07:55 AM", status: "presente", avatar: "LT" },
+  { id: 5, name: "Lucas Torres", module: "DOJO INGLÉS", time: "07:55 AM", status: "presente", avatar: "LT" },
 ];
 
 const containerVariants: Variants = {

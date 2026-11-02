@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { signup } from "../login/actions";
 import styles from "../auth.module.css";
 import { ArrowLeft } from "lucide-react";
@@ -21,11 +22,19 @@ export default async function RegisterPage({
 
         <div className={styles.logoContainer}>
           <div className={styles.logo}>
-            <span>DOJO</span><span>IA</span>
+            <Image 
+              src="/logo-sosa-kai.png" 
+              alt="Sosa Kai Logo" 
+              width={48} 
+              height={48} 
+              style={{ objectFit: 'contain', marginRight: '0.5rem' }}
+              priority
+            />
+            <span>SOSA</span><span>KAI</span>
           </div>
         </div>
         
-        <h1 className={styles.title}>Comienza tu Entrenamiento</h1>
+        <h1 className={styles.title}>Comienza tu Entrenamiento en Sosa Kai</h1>
         <p className={styles.subtitle}>Crea una cuenta familiar para acceder a todos los módulos.</p>
 
         {error && <div className={styles.errorBox}>{error}</div>}

@@ -214,12 +214,11 @@ CREATE POLICY "Modules are viewable by everyone" ON public.modules FOR SELECT US
 -- 5. DATOS SEMILLA (Opcional - Insertar módulos por defecto)
 -- ==========================================
 INSERT INTO public.modules (name, slug, description, color_hex, icon_name) VALUES
-('DOJO ENGLISH', 'dojo-english', 'Inglés práctico con speaking IA.', '#00F0FF', 'message-square'),
-('DOJO CODE', 'dojo-code', 'Programación desde Scratch hasta Python.', '#10B981', 'code'),
-('DOJO ROBOTICS', 'dojo-robotics', 'Robótica con simuladores y kits.', '#FFB800', 'cpu'),
+('DOJO INGLÉS', 'dojo-english', 'Inglés práctico con speaking IA.', '#00F0FF', 'message-square'),
+('DOJO ROBÓTICA', 'dojo-robotics', 'Robótica con simuladores y kits.', '#FFB800', 'cpu'),
 ('DOJO KARATE', 'dojo-karate', 'Valores, disciplina y defensa personal.', '#FF3366', 'gamepad')
 ON CONFLICT (slug) DO NOTHING;
 
 -- Eliminar módulos antiguos si ya existían en la base de datos
 DELETE FROM public.modules
-WHERE slug IN ('dojo-math', 'dojo-read', 'dojo-write');
+WHERE slug IN ('dojo-math', 'dojo-read', 'dojo-write', 'dojo-code', 'dojo-english-old', 'dojo-robotics-old');

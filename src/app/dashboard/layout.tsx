@@ -14,6 +14,7 @@ import {
   FileText
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 
 export default async function DashboardLayout({
   children,
@@ -35,12 +36,17 @@ export default async function DashboardLayout({
     <div className={styles.dashboardLayout}>
       <aside className={styles.sidebar}>
         <div className={styles.logo}>
-          <div className={styles.logoIcon}>
-            <BrainCircuit size={24} />
-          </div>
+          <Image 
+            src="/logo-sosa-kai.png" 
+            alt="Sosa Kai Logo" 
+            width={38} 
+            height={38} 
+            style={{ objectFit: 'contain' }}
+            priority
+          />
           <div>
-            <span className={styles.logoText}>DOJO</span>
-            <span className={styles.logoAccent}>IA</span>
+            <span className={styles.logoText}>SOSA</span>
+            <span className={styles.logoAccent}> KAI</span>
           </div>
         </div>
         

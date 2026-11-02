@@ -196,7 +196,7 @@ export default function DashboardPage() {
         <div className={styles.aiExecutiveWidget}>
           <div className={styles.aiWidgetHeader}>
             <BrainCircuit size={24} />
-            <span>Asistente IA DOJOIA</span>
+            <span>Asistente IA SOSA KAI</span>
           </div>
           <div className={styles.aiWidgetContent}>
             He detectado un aumento del 15% en retardos en el grupo 3°B durante esta semana. Además, hay 12 alumnos con riesgo de reprobación en Matemáticas Avanzadas. Te sugiero enviar un aviso a padres y agendar tutorías virtuales.

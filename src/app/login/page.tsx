@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { login } from "./actions";
 import styles from "../auth.module.css";
 import { ArrowLeft } from "lucide-react";
@@ -21,11 +22,19 @@ export default async function LoginPage({
 
         <div className={styles.logoContainer}>
           <div className={styles.logo}>
-            <span>DOJO</span><span>IA</span>
+            <Image 
+              src="/logo-sosa-kai.png" 
+              alt="Sosa Kai Logo" 
+              width={48} 
+              height={48} 
+              style={{ objectFit: 'contain', marginRight: '0.5rem' }}
+              priority
+            />
+            <span>SOSA</span><span>KAI</span>
           </div>
         </div>
         
-        <h1 className={styles.title}>Bienvenido al Dojo</h1>
+        <h1 className={styles.title}>Bienvenido a Sosa Kai</h1>
         <p className={styles.subtitle}>Ingresa tus credenciales para continuar tu entrenamiento.</p>
 
         {error && <div className={styles.errorBox}>{error}</div>}

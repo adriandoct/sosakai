@@ -2,8 +2,11 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "DOJOIA | Dashboard Ejecutivo",
-  description: "Plataforma educativa premium con IA integrada. Gestión avanzada para directores y docentes.",
+  title: "SOSA KAI | Dojo & Dashboard",
+  description: "Plataforma marcial y educativa SOSA KAI con gestión integral y formación para campeones.",
+  icons: {
+    icon: "/logo.png",
+  },
 };
 
 export default function RootLayout({

@@ -2,14 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { 
-  Calculator, 
   MessageSquare, 
-  Code2, 
   Cpu, 
   Gamepad2, 
-  BookOpen, 
-  PenTool, 
   Bot,
   ChevronRight,
   CheckCircle2,
@@ -29,14 +26,9 @@ export default function Home() {
   }, []);
 
   const modules = [
-    { icon: <Calculator />, title: "DOJO MATH", desc: "Sistema matemático progresivo con ejercicios diarios adaptativos.", color: "#FF3366", level: "White to Black" },
-    { icon: <MessageSquare />, title: "DOJO ENGLISH", desc: "Inglés práctico con speaking IA y reconocimiento de pronunciación.", color: "#00F0FF", level: "All Levels" },
-    { icon: <Code2 />, title: "DOJO CODE", desc: "Aprende programación desde Scratch hasta Python avanzado.", color: "#10B981", level: "Logic + Syntax" },
-    { icon: <Cpu />, title: "DOJO ROBOTICS", desc: "Robótica con simuladores 3D interactivos y kits físicos.", color: "#FFB800", level: "Engineering" },
+    { icon: <MessageSquare />, title: "DOJO INGLÉS", desc: "Inglés práctico con speaking IA y reconocimiento de pronunciación.", color: "#00F0FF", level: "All Levels" },
+    { icon: <Cpu />, title: "DOJO ROBÓTICA", desc: "Robótica con simuladores 3D interactivos y kits físicos.", color: "#FFB800", level: "Engineering" },
     { icon: <Gamepad2 />, title: "DOJO KARATE", desc: "Valores, disciplina y defensa personal con movimientos guiados.", color: "#FF3366", level: "Mind & Body" },
-    { icon: <BookOpen />, title: "DOJO READ", desc: "Lectura rápida, comprensión profunda y cuentos interactivos.", color: "#8B5CF6", level: "Comprehension" },
-    { icon: <PenTool />, title: "DOJO WRITE", desc: "Escritura creativa, ensayos estructurados y concursos.", color: "#FF3366", level: "Creativity" },
-    { icon: <Bot />, title: "DOJO AI COACH", desc: "Tutor IA personal 24/7 que motiva, explica y adapta tu contenido.", color: "#00F0FF", level: "Personalized" },
   ];
 
   const plans = [
@@ -68,7 +60,14 @@ export default function Home() {
       <header className={styles.header} style={{ background: scrolled ? 'rgba(11, 14, 20, 0.95)' : 'transparent', borderBottom: scrolled ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
         <div className={`container ${styles.headerContent}`}>
           <div className={styles.logo}>
-            <span>DOJO</span><span>IA</span>
+            <Image 
+              src="/logo-sosa-kai.png" 
+              alt="Sosa Kai Logo" 
+              width={42} 
+              height={42} 
+              priority
+            />
+            <span className={styles.logoWhite}>SOSA</span><span className={styles.logoRed}>KAI</span>
           </div>
           <nav className={styles.nav}>
             <Link href="#como-funciona" className={styles.navLink}>Cómo funciona</Link>
@@ -128,7 +127,7 @@ export default function Home() {
                 </div>
                 <div className={styles.aiText}>
                   <h4>AI Sensei dice:</h4>
-                  <p>¡Excelente trabajo en Álgebra hoy! Estás a solo 3 misiones de desbloquear la insignia de "Master Logic". ¿Continuamos con Programación?</p>
+                  <p>¡Excelente trabajo en Inglés hoy! Estás a solo 3 misiones de desbloquear la insignia de "Master Speaker". ¿Continuamos con Robótica?</p>
                 </div>
               </div>
             </div>
@@ -139,7 +138,7 @@ export default function Home() {
       <section id="modulos" className={styles.modules}>
         <div className="container">
           <div className={styles.sectionHeader}>
-            <h2>8 Caminos hacia la <span className="text-gradient">Excelencia</span></h2>
+            <h2>3 Caminos hacia la <span className="text-gradient">Excelencia</span></h2>
             <p>Rutas progresivas por niveles donde cada alumno avanza a su propio ritmo, desbloqueando retos e insignias.</p>
           </div>
           
@@ -166,8 +165,17 @@ export default function Home() {
           <div className={styles.philImage}>
             <div className={styles.philImageCircle}></div>
             <div className={styles.philImageCircleInner}></div>
-            <div className={styles.philLogo}>
-              DOJO<span style={{color: 'var(--dojo-red)'}}>IA</span>
+            <div className={styles.philLogo} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <Image 
+                src="/logo-sosa-kai.png" 
+                alt="Sosa Kai Logo" 
+                width={85} 
+                height={85} 
+                style={{ objectFit: 'contain', marginBottom: '0.5rem' }}
+              />
+              <div style={{ fontSize: '2rem' }}>
+                SOSA<span style={{color: 'var(--dojo-red)'}}>KAI</span>
+              </div>
             </div>
           </div>
           
@@ -251,8 +259,8 @@ export default function Home() {
       <section className={styles.cta}>
         <div className="container">
           <div className={styles.ctaInner}>
-            <h2>¿Listo para el primer paso en el <span className="text-gradient">DOJO</span>?</h2>
-            <p>Únete a miles de padres que están transformando la educación de sus hijos con el modelo del futuro.</p>
+            <h2>¿Listo para el primer paso en <span className="text-gradient">SOSA KAI</span>?</h2>
+            <p>Únete a miles de familias que están impulsando el futuro y la disciplina de sus hijos con el modelo de excelencia.</p>
             <div className={styles.ctaButtons}>
               <Link href="/register" className={styles.btnPrimary} style={{ padding: '1rem 3rem', fontSize: '1.2rem' }}>
                 Comenzar Prueba Gratis
@@ -267,9 +275,15 @@ export default function Home() {
           <div className={styles.footerGrid}>
             <div>
               <div className={styles.footerLogo}>
-                <span>DOJO</span><span>IA</span>
+                <Image 
+                  src="/logo-sosa-kai.png" 
+                  alt="Sosa Kai Logo" 
+                  width={34} 
+                  height={34} 
+                />
+                <span className={styles.logoWhite}>SOSA</span><span className={styles.logoRed}>KAI</span>
               </div>
-              <p>Formando niños y jóvenes fuertes en mente, cuerpo y conocimiento a través de IA y disciplina.</p>
+              <p>Formando niños y jóvenes fuertes en mente, cuerpo y conocimiento a través de la disciplina marcial y formación integral.</p>
             </div>
             
             <div className={styles.footerCol}>
@@ -303,8 +317,8 @@ export default function Home() {
           </div>
           
           <div className={styles.footerBottom}>
-            <p>&copy; {new Date().getFullYear()} DOJOIA Education. Todos los derechos reservados.</p>
-            <p>Made with ⚡ for the future.</p>
+            <p>&copy; {new Date().getFullYear()} SOSA KAI. Todos los derechos reservados.</p>
+            <p>Disciplina • Superación • Futuro</p>
           </div>
         </div>
       </footer>
