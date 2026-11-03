@@ -39,63 +39,26 @@ interface DojoVideo {
   thumbnail: string;
 }
 
-const INITIAL_VIDEOS: DojoVideo[] = [
-  {
-    id: "V-01",
-    title: "Kata Bassai Dai: Desglose Técnico Completo",
-    category: "Katas Avanzados",
-    duration: "14:20",
-    level: "Avanzado",
-    instructor: "",
-    description: "Análisis punto por punto de las posturas, cambios de ritmo y el Kime característico del kata cumbre de Shito-Ryu.",
-    videoUrl: "https://www.youtube-nocookie.com/embed/n4fCq7QdDks?autoplay=1",
-    thumbnail: "/karate-action.jpg",
-  },
-  {
-    id: "V-02",
-    title: "Pinan Shodan y Pinan Nidan: Forma y Embusen",
-    category: "Katas Básicos",
-    duration: "09:45",
-    level: "Principiante",
-    instructor: "",
-    description: "Los fundamentos esenciales de la línea Shito-Ryu explicados para alumnos principiantes que aspiran a cinta amarilla y naranja.",
-    videoUrl: "https://www.youtube-nocookie.com/embed/n4fCq7QdDks?autoplay=1",
-    thumbnail: "/karate-action.jpg",
-  },
-  {
-    id: "V-03",
-    title: "Tácticas de Kumite: Desplazamientos y Anticipación (Deai)",
-    category: "Kumite & Combate",
-    duration: "12:15",
-    level: "Intermedio",
-    instructor: "",
-    description: "Cómo entrar en la distancia del oponente, cortar ángulos de ataque y conectar Gyaku Tsuki con velocidad de competición.",
-    videoUrl: "https://www.youtube-nocookie.com/embed/n4fCq7QdDks?autoplay=1",
-    thumbnail: "/karate-action.jpg",
-  },
-  {
-    id: "V-04",
-    title: "Bunkai Aplicado de Kata Seienchin: Derribos y Llaves",
-    category: "Bunkai & Defensa Personal",
-    duration: "16:50",
-    level: "Avanzado",
-    instructor: "",
-    description: "Desmitificando los movimientos de Seienchin para aplicaciones reales de defensa personal, control articular y proyecciones.",
-    videoUrl: "https://www.youtube-nocookie.com/embed/n4fCq7QdDks?autoplay=1",
-    thumbnail: "/karate-action.jpg",
-  },
-  {
-    id: "V-05",
-    title: "Acondicionamiento Físico y Movilidad para Karatekas",
-    category: "Acondicionamiento",
-    duration: "18:30",
-    level: "Todos",
-    instructor: "",
-    description: "Rutina específica de flexibilidad de cadera para patadas altas, potencia isométrica en Shiko Dachi y resistencia aeróbica.",
-    videoUrl: "https://www.youtube-nocookie.com/embed/n4fCq7QdDks?autoplay=1",
-    thumbnail: "/karate-action.jpg",
-  },
-];
+const DEMO_VIDEO_IDS = new Set(["V-01", "V-02", "V-03", "V-04", "V-05"]);
+
+function isDemoVideo(v: DojoVideo) {
+  if (DEMO_VIDEO_IDS.has(v.id)) return true;
+  const title = (v.title || "").toLowerCase();
+  if (
+    title.includes("kata bassai dai") ||
+    title.includes("pinan shodan") ||
+    title.includes("tácticas de kumite") ||
+    title.includes("tacticas de kumite") ||
+    title.includes("kata seienchin") ||
+    title.includes("acondicionamiento físico") ||
+    title.includes("acondicionamiento fisico")
+  ) {
+    return true;
+  }
+  return false;
+}
+
+const INITIAL_VIDEOS: DojoVideo[] = [];
 
 // Helper to convert YouTube/Vimeo URLs to embeddable URLs and extract thumbnails
 function parseVideoInput(url: string) {
@@ -165,18 +128,24 @@ export default function VideosPage() {
     description: "",
   });
 
-  // Load persisted videos from localStorage
+  // Load persisted videos from localStorage, filtering out all demo videos
   useEffect(() => {
     try {
       const stored = localStorage.getItem("sosakai_videos_library");
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setVideos(parsed);
+        if (Array.isArray(parsed)) {
+          // Keep only non-demo videos (videos uploaded/added by the user)
+          const userOnlyVideos = parsed.filter((v: DojoVideo) => !isDemoVideo(v));
+          setVideos(userOnlyVideos);
+          localStorage.setItem("sosakai_videos_library", JSON.stringify(userOnlyVideos));
+          return;
         }
       }
+      setVideos([]);
     } catch {
       // Ignorar error de parsing en localStorage
+      setVideos([]);
     }
   }, []);
 
@@ -559,10 +528,22 @@ export default function VideosPage() {
       {filtered.length === 0 && (
         <div style={{ textAlign: "center", padding: "4rem 1rem", color: "#94a3b8" }}>
           <Video size={48} style={{ opacity: 0.3, marginBottom: "1rem" }} />
-          <h3>No se encontraron videos en esta categoría</h3>
+          <h3>{videos.length === 0 ? "Videoteca lista para tus videos" : "No se encontraron videos con ese filtro"}</h3>
           <p style={{ fontSize: "0.9rem", marginTop: "0.4rem" }}>
-            Prueba seleccionando otra categoría o agrega un nuevo video con el botón superior.
+            {videos.length === 0
+              ? "Aún no hay videos en la videoteca oficial. Haz clic en 'Agregar Video' para publicar el primero."
+              : "Prueba seleccionando otra categoría o limpiando la búsqueda."}
           </p>
+          {videos.length === 0 && isAdmin && (
+            <button
+              className={styles.btnPrimary}
+              style={{ marginTop: "1.25rem", display: "inline-flex", alignItems: "center", gap: "0.5rem" }}
+              onClick={() => setIsAddOpen(true)}
+            >
+              <Plus size={18} />
+              Agregar Primer Video
+            </button>
+          )}
         </div>
       )}
 

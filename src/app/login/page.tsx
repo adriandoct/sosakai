@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { login } from "./actions";
 import styles from "../auth.module.css";
-import { ArrowLeft, ShieldCheck, Key } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 export default async function LoginPage({
   searchParams,
@@ -38,33 +38,6 @@ export default async function LoginPage({
         <h1 className={styles.title}>Bienvenido a Sosa Kai</h1>
         <p className={styles.subtitle}>Ingresa tus credenciales para continuar tu entrenamiento.</p>
 
-        {/* Credentials Reminder Box */}
-        <div style={{
-          background: 'rgba(230, 0, 38, 0.08)',
-          border: '1px solid rgba(230, 0, 38, 0.25)',
-          borderRadius: '12px',
-          padding: '0.9rem 1rem',
-          margin: '1.25rem 0 1.5rem 0',
-          fontSize: '0.85rem',
-          color: '#cbd5e1'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700, color: '#f8fafc', marginBottom: '0.4rem' }}>
-            <Key size={16} color="#e60026" />
-            <span>Credenciales Oficiales de Acceso:</span>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', fontFamily: 'monospace', fontSize: '0.84rem' }}>
-            <div>
-              <span style={{ color: '#94a3b8' }}>Super Admin:</span> <strong style={{ color: '#fff' }}>superadmin@admin.com</strong>
-            </div>
-            <div>
-              <span style={{ color: '#94a3b8' }}>Admin Dojo:</span> <strong style={{ color: '#fff' }}>admin@admin.com</strong>
-            </div>
-            <div>
-              <span style={{ color: '#94a3b8' }}>Contraseña:</span> <strong style={{ color: '#ff4d6d' }}>12345678Cecyte</strong>
-            </div>
-          </div>
-        </div>
-
         {displayError && <div className={styles.errorBox}>{displayError}</div>}
 
         <form action={login}>
@@ -75,7 +48,7 @@ export default async function LoginPage({
               id="email" 
               name="email" 
               type="email" 
-              placeholder="admin@admin.com"
+              placeholder="tu@email.com"
               required 
             />
           </div>
@@ -87,7 +60,7 @@ export default async function LoginPage({
               id="password" 
               name="password" 
               type="password" 
-              placeholder="12345678Cecyte"
+              placeholder="••••••••"
               required 
             />
           </div>
