@@ -5,6 +5,7 @@ import { LogOut } from "lucide-react";
 import Image from "next/image";
 import { cookies } from "next/headers";
 import SidebarNav from "./SidebarNav";
+import { UserProvider } from "./UserContext";
 
 export default async function DashboardLayout({
   children,
@@ -94,7 +95,9 @@ export default async function DashboardLayout({
       </aside>
 
       <main className={styles.mainContent}>
-        {children}
+        <UserProvider user={currentUser}>
+          {children}
+        </UserProvider>
       </main>
     </div>
   );

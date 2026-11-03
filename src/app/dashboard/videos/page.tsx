@@ -1,8 +1,21 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Video, Play, Plus, Search, X, Clock, Award, Trash2, CheckCircle2 } from "lucide-react";
+import {
+  Video,
+  Play,
+  Plus,
+  Search,
+  X,
+  Clock,
+  Award,
+  Trash2,
+  CheckCircle2,
+  AlertTriangle,
+  ShieldAlert,
+} from "lucide-react";
 import styles from "../dojo-modules.module.css";
+import { useUser } from "../UserContext";
 
 type VideoCategory =
   | "Katas Básicos"
@@ -117,12 +130,15 @@ function parseVideoInput(url: string) {
 }
 
 export default function VideosPage() {
+  const { isAdmin, isSuperAdmin, role } = useUser();
+
   const [videos, setVideos] = useState<DojoVideo[]>(INITIAL_VIDEOS);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Todas");
   const [activeVideo, setActiveVideo] = useState<DojoVideo | null>(null);
   const [isAddOpen, setIsAddOpen] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [videoToDelete, setVideoToDelete] = useState<DojoVideo | null>(null);
+  const [notification, setNotification] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   // Form State
   const [formData, setFormData] = useState<{
@@ -160,6 +176,11 @@ export default function VideosPage() {
 
   const handleAddVideo = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAdmin) {
+      setNotification({ type: "error", text: "Acción no autorizada: Solo Super Admin y Admin pueden agregar videos." });
+      return;
+    }
+
     if (!formData.title || !formData.videoUrl) return;
 
     const { embedUrl, thumbnail } = parseVideoInput(formData.videoUrl);
@@ -181,9 +202,7 @@ export default function VideosPage() {
 
     try {
       localStorage.setItem("sosakai_videos_library", JSON.stringify(updated));
-    } catch {
-      // localStorage may fail if storage is restricted
-    }
+    } catch {}
 
     // Reset Form & show notification
     setFormData({
@@ -197,21 +216,37 @@ export default function VideosPage() {
     });
     setIsAddOpen(false);
 
-    setSuccessMessage(`¡Video "${newVideo.title}" agregado con éxito a la categoría ${newVideo.category}!`);
-    setTimeout(() => {
-      setSuccessMessage(null);
-    }, 4000);
+    setNotification({
+      type: "success",
+      text: `¡Video "${newVideo.title}" agregado con éxito a la videoteca!`,
+    });
+    setTimeout(() => setNotification(null), 4000);
   };
 
-  const handleDeleteVideo = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (confirm("¿Estás seguro de que deseas eliminar este video de la videoteca?")) {
-      const updated = videos.filter((v) => v.id !== id);
-      setVideos(updated);
-      try {
-        localStorage.setItem("sosakai_videos_library", JSON.stringify(updated));
-      } catch {}
+  const handleConfirmDelete = () => {
+    if (!videoToDelete) return;
+
+    if (!isAdmin) {
+      setNotification({ type: "error", text: "Permiso denegado: Solo Super Admin y Admin pueden eliminar videos." });
+      setVideoToDelete(null);
+      return;
     }
+
+    const updated = videos.filter((v) => v.id !== videoToDelete.id);
+    setVideos(updated);
+
+    try {
+      localStorage.setItem("sosakai_videos_library", JSON.stringify(updated));
+    } catch {}
+
+    const deletedTitle = videoToDelete.title;
+    setVideoToDelete(null);
+
+    setNotification({
+      type: "success",
+      text: `El video "${deletedTitle}" ha sido eliminado de la videoteca.`,
+    });
+    setTimeout(() => setNotification(null), 4000);
   };
 
   const filtered = videos.filter((v) => {
@@ -232,24 +267,34 @@ export default function VideosPage() {
             <Video size={30} color="#e60026" />
             Videos y Categorías Técnicas
           </h1>
-          <p>Videoteca marcial interactiva organizada por niveles y temas para el entrenamiento continuo de los karatekas.</p>
+          <p>
+            Videoteca marcial interactiva organizada por niveles y temas para el entrenamiento continuo de los karatekas.
+            {isAdmin && (
+              <span style={{ marginLeft: "0.5rem", color: "#e60026", fontWeight: 700 }}>
+                • Modo {isSuperAdmin ? "Super Admin" : "Admin"} Activo
+              </span>
+            )}
+          </p>
         </div>
 
-        <div className={styles.topActions}>
-          <button className={styles.btnPrimary} onClick={() => setIsAddOpen(true)}>
-            <Plus size={18} />
-            Agregar Video
-          </button>
-        </div>
+        {/* Add video button: ONLY visible for Super Admin and Admin */}
+        {isAdmin && (
+          <div className={styles.topActions}>
+            <button className={styles.btnPrimary} onClick={() => setIsAddOpen(true)}>
+              <Plus size={18} />
+              Agregar Video
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Success Notification Banner */}
-      {successMessage && (
+      {/* Notification Banner */}
+      {notification && (
         <div
           style={{
-            background: "rgba(16, 185, 129, 0.15)",
-            border: "1px solid rgba(16, 185, 129, 0.4)",
-            color: "#10b981",
+            background: notification.type === "success" ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)",
+            border: `1px solid ${notification.type === "success" ? "rgba(16, 185, 129, 0.4)" : "rgba(239, 68, 68, 0.4)"}`,
+            color: notification.type === "success" ? "#10b981" : "#f87171",
             padding: "0.85rem 1.25rem",
             borderRadius: "12px",
             display: "flex",
@@ -259,8 +304,8 @@ export default function VideosPage() {
             animation: "fadeIn 0.2s ease",
           }}
         >
-          <CheckCircle2 size={20} />
-          <span>{successMessage}</span>
+          {notification.type === "success" ? <CheckCircle2 size={20} /> : <ShieldAlert size={20} />}
+          <span>{notification.text}</span>
         </div>
       )}
 
@@ -384,28 +429,6 @@ export default function VideosPage() {
               >
                 {item.level}
               </span>
-
-              <button
-                onClick={(e) => handleDeleteVideo(item.id, e)}
-                title="Eliminar Video"
-                style={{
-                  position: "absolute",
-                  top: "0.6rem",
-                  right: "0.6rem",
-                  background: "rgba(0,0,0,0.75)",
-                  border: "none",
-                  color: "#f87171",
-                  width: "28px",
-                  height: "28px",
-                  borderRadius: "6px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer",
-                }}
-              >
-                <Trash2 size={14} />
-              </button>
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "0.45rem" }}>
@@ -420,6 +443,7 @@ export default function VideosPage() {
               </p>
             </div>
 
+            {/* Card Footer Actions */}
             <div
               style={{
                 marginTop: "auto",
@@ -428,6 +452,7 @@ export default function VideosPage() {
                 alignItems: "center",
                 borderTop: "1px solid rgba(255,255,255,0.06)",
                 paddingTop: "0.75rem",
+                gap: "0.5rem",
               }}
             >
               <span
@@ -437,19 +462,37 @@ export default function VideosPage() {
                   display: "flex",
                   alignItems: "center",
                   gap: "0.4rem",
+                  flex: 1,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
                 }}
               >
                 <Award size={14} color="#e60026" />
                 {item.instructor}
               </span>
 
-              <button
-                className={styles.btnPrimary}
-                style={{ padding: "0.4rem 0.85rem", fontSize: "0.82rem" }}
-                onClick={() => setActiveVideo(item)}
-              >
-                Reproducir
-              </button>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                {/* Delete button: ONLY visible for Superadmin and Admin */}
+                {isAdmin && (
+                  <button
+                    className={styles.btnDelete}
+                    onClick={() => setVideoToDelete(item)}
+                    title="Eliminar este video (Solo Administradores)"
+                  >
+                    <Trash2 size={14} />
+                    <span>Eliminar</span>
+                  </button>
+                )}
+
+                <button
+                  className={styles.btnPrimary}
+                  style={{ padding: "0.45rem 0.85rem", fontSize: "0.82rem" }}
+                  onClick={() => setActiveVideo(item)}
+                >
+                  Reproducir
+                </button>
+              </div>
             </div>
           </div>
         ))}
@@ -500,8 +543,79 @@ export default function VideosPage() {
         </div>
       )}
 
-      {/* Add Video Modal */}
-      {isAddOpen && (
+      {/* Delete Confirmation Modal (Admin only) */}
+      {videoToDelete && (
+        <div className={styles.modalOverlay} onClick={() => setVideoToDelete(null)}>
+          <div className={styles.modalBox} style={{ maxWidth: "500px" }} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2 style={{ color: "#f87171", display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                <AlertTriangle size={22} color="#f87171" />
+                Confirmar Eliminación de Video
+              </h2>
+              <button className={styles.modalClose} onClick={() => setVideoToDelete(null)}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className={styles.modalBody}>
+              <p style={{ color: "#cbd5e1", fontSize: "0.95rem", lineHeight: 1.6 }}>
+                ¿Estás seguro de que deseas eliminar permanentemente de la videoteca oficial el video:
+              </p>
+              <div
+                style={{
+                  background: "#0a0c10",
+                  padding: "0.9rem 1.1rem",
+                  borderRadius: "10px",
+                  border: "1px solid rgba(255,255,255,0.06)",
+                }}
+              >
+                <div style={{ fontWeight: 700, color: "#f8fafc", fontSize: "1rem" }}>{videoToDelete.title}</div>
+                <div style={{ fontSize: "0.82rem", color: "#e60026", marginTop: "0.2rem" }}>
+                  Categoría: {videoToDelete.category} • {videoToDelete.instructor}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  background: "rgba(239, 68, 68, 0.1)",
+                  border: "1px solid rgba(239, 68, 68, 0.25)",
+                  padding: "0.75rem 1rem",
+                  borderRadius: "8px",
+                  fontSize: "0.82rem",
+                  color: "#fca5a5",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                }}
+              >
+                <ShieldAlert size={18} />
+                <span>Esta acción solo está autorizada para cuentas <strong>Super Admin</strong> y <strong>Admin</strong>.</span>
+              </div>
+            </div>
+
+            <div className={styles.modalFooter}>
+              <button
+                type="button"
+                className={styles.btnSecondary}
+                onClick={() => setVideoToDelete(null)}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className={styles.btnDanger}
+                onClick={handleConfirmDelete}
+              >
+                <Trash2 size={16} />
+                Eliminar Definitivamente
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Video Modal (Admin only) */}
+      {isAddOpen && isAdmin && (
         <div className={styles.modalOverlay} onClick={() => setIsAddOpen(false)}>
           <div className={styles.modalBox} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
