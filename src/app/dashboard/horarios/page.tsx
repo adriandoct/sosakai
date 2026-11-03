@@ -318,7 +318,7 @@ export default function HorariosPage() {
               </div>
               <div className={styles.formGroup}>
                 <label>Sensei Responsable</label>
-                <input type="text" placeholder="Sensei Adrian Silva" />
+                <input type="text" placeholder="Sensei asignado..." />
               </div>
             </div>
             <div className={styles.modalFooter}>

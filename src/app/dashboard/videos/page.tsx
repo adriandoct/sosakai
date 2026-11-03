@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   ShieldAlert,
+  Edit3,
 } from "lucide-react";
 import styles from "../dojo-modules.module.css";
 import { useUser } from "../UserContext";
@@ -45,7 +46,7 @@ const INITIAL_VIDEOS: DojoVideo[] = [
     category: "Katas Avanzados",
     duration: "14:20",
     level: "Avanzado",
-    instructor: "Sensei Adrian Silva (4to Dan)",
+    instructor: "",
     description: "Análisis punto por punto de las posturas, cambios de ritmo y el Kime característico del kata cumbre de Shito-Ryu.",
     videoUrl: "https://www.youtube-nocookie.com/embed/n4fCq7QdDks?autoplay=1",
     thumbnail: "/karate-action.jpg",
@@ -56,7 +57,7 @@ const INITIAL_VIDEOS: DojoVideo[] = [
     category: "Katas Básicos",
     duration: "09:45",
     level: "Principiante",
-    instructor: "Sensei Carlos Mendoza",
+    instructor: "",
     description: "Los fundamentos esenciales de la línea Shito-Ryu explicados para alumnos principiantes que aspiran a cinta amarilla y naranja.",
     videoUrl: "https://www.youtube-nocookie.com/embed/n4fCq7QdDks?autoplay=1",
     thumbnail: "/karate-action.jpg",
@@ -67,7 +68,7 @@ const INITIAL_VIDEOS: DojoVideo[] = [
     category: "Kumite & Combate",
     duration: "12:15",
     level: "Intermedio",
-    instructor: "Sensei Roberto Tanaka",
+    instructor: "",
     description: "Cómo entrar en la distancia del oponente, cortar ángulos de ataque y conectar Gyaku Tsuki con velocidad de competición.",
     videoUrl: "https://www.youtube-nocookie.com/embed/n4fCq7QdDks?autoplay=1",
     thumbnail: "/karate-action.jpg",
@@ -78,7 +79,7 @@ const INITIAL_VIDEOS: DojoVideo[] = [
     category: "Bunkai & Defensa Personal",
     duration: "16:50",
     level: "Avanzado",
-    instructor: "Sensei Adrian Silva",
+    instructor: "",
     description: "Desmitificando los movimientos de Seienchin para aplicaciones reales de defensa personal, control articular y proyecciones.",
     videoUrl: "https://www.youtube-nocookie.com/embed/n4fCq7QdDks?autoplay=1",
     thumbnail: "/karate-action.jpg",
@@ -89,7 +90,7 @@ const INITIAL_VIDEOS: DojoVideo[] = [
     category: "Acondicionamiento",
     duration: "18:30",
     level: "Todos",
-    instructor: "Preparador Físico Dojo",
+    instructor: "",
     description: "Rutina específica de flexibilidad de cadera para patadas altas, potencia isométrica en Shiko Dachi y resistencia aeróbica.",
     videoUrl: "https://www.youtube-nocookie.com/embed/n4fCq7QdDks?autoplay=1",
     thumbnail: "/karate-action.jpg",
@@ -138,6 +139,11 @@ export default function VideosPage() {
   const [activeVideo, setActiveVideo] = useState<DojoVideo | null>(null);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [videoToDelete, setVideoToDelete] = useState<DojoVideo | null>(null);
+  const [editingInstructorVideo, setEditingInstructorVideo] = useState<{
+    id: string;
+    title: string;
+    instructor: string;
+  } | null>(null);
   const [notification, setNotification] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   // Form State
@@ -153,7 +159,7 @@ export default function VideosPage() {
     title: "",
     category: "Katas Básicos",
     videoUrl: "",
-    instructor: "Sensei Adrian Silva",
+    instructor: "",
     level: "Todos",
     duration: "10:00",
     description: "",
@@ -191,7 +197,7 @@ export default function VideosPage() {
       category: formData.category,
       duration: formData.duration.trim() || "10:00",
       level: formData.level,
-      instructor: formData.instructor.trim() || "Sensei Sosa-Kai",
+      instructor: formData.instructor.trim(),
       description: formData.description.trim() || "Video instructivo oficial del Dojo Shito-Ryu Sosa-Kai.",
       videoUrl: embedUrl,
       thumbnail: thumbnail,
@@ -209,7 +215,7 @@ export default function VideosPage() {
       title: "",
       category: "Katas Básicos",
       videoUrl: "",
-      instructor: "Sensei Adrian Silva",
+      instructor: "",
       level: "Todos",
       duration: "10:00",
       description: "",
@@ -221,6 +227,32 @@ export default function VideosPage() {
       text: `¡Video "${newVideo.title}" agregado con éxito a la videoteca!`,
     });
     setTimeout(() => setNotification(null), 4000);
+  };
+
+  const handleSaveInstructor = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingInstructorVideo) return;
+
+    const newInstructor = editingInstructorVideo.instructor.trim();
+    const updated = videos.map((v) =>
+      v.id === editingInstructorVideo.id ? { ...v, instructor: newInstructor } : v
+    );
+    setVideos(updated);
+
+    try {
+      localStorage.setItem("sosakai_videos_library", JSON.stringify(updated));
+    } catch {}
+
+    const title = editingInstructorVideo.title;
+    setEditingInstructorVideo(null);
+
+    setNotification({
+      type: "success",
+      text: newInstructor
+        ? `Instructor "${newInstructor}" asignado a "${title}".`
+        : `Se dejó en blanco el instructor de "${title}".`,
+    });
+    setTimeout(() => setNotification(null), 3500);
   };
 
   const handleConfirmDelete = () => {
@@ -253,7 +285,7 @@ export default function VideosPage() {
     const matchesSearch =
       v.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       v.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      v.instructor.toLowerCase().includes(searchTerm.toLowerCase());
+      Boolean(v.instructor && v.instructor.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesCat = selectedCategory === "Todas" || v.category === selectedCategory;
     return matchesSearch && matchesCat;
   });
@@ -458,7 +490,7 @@ export default function VideosPage() {
               <span
                 style={{
                   fontSize: "0.8rem",
-                  color: "#cbd5e1",
+                  color: item.instructor ? "#cbd5e1" : "#64748b",
                   display: "flex",
                   alignItems: "center",
                   gap: "0.4rem",
@@ -468,21 +500,47 @@ export default function VideosPage() {
                   whiteSpace: "nowrap",
                 }}
               >
-                <Award size={14} color="#e60026" />
-                {item.instructor}
+                <Award size={14} color={item.instructor ? "#e60026" : "#64748b"} />
+                {item.instructor ? item.instructor : "Instructor por asignar"}
               </span>
 
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                {/* Delete button: ONLY visible for Superadmin and Admin */}
+                {/* Admin actions: Edit instructor + Delete */}
                 {isAdmin && (
-                  <button
-                    className={styles.btnDelete}
-                    onClick={() => setVideoToDelete(item)}
-                    title="Eliminar este video (Solo Administradores)"
-                  >
-                    <Trash2 size={14} />
-                    <span>Eliminar</span>
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      className={styles.btnSecondary}
+                      style={{
+                        padding: "0.4rem 0.65rem",
+                        fontSize: "0.78rem",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "0.3rem",
+                      }}
+                      onClick={() =>
+                        setEditingInstructorVideo({
+                          id: item.id,
+                          title: item.title,
+                          instructor: item.instructor || "",
+                        })
+                      }
+                      title="Asignar o modificar instructor"
+                    >
+                      <Edit3 size={13} />
+                      <span>{item.instructor ? "Editar" : "Asignar"}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      className={styles.btnDelete}
+                      onClick={() => setVideoToDelete(item)}
+                      title="Eliminar este video (Solo Administradores)"
+                    >
+                      <Trash2 size={14} />
+                      <span>Eliminar</span>
+                    </button>
+                  </>
                 )}
 
                 <button
@@ -516,7 +574,8 @@ export default function VideosPage() {
               <div>
                 <h2>{activeVideo.title}</h2>
                 <p style={{ fontSize: "0.82rem", color: "#94a3b8", marginTop: "0.2rem" }}>
-                  {activeVideo.category} • Impartido por {activeVideo.instructor}
+                  {activeVideo.category}
+                  {activeVideo.instructor ? ` • Impartido por ${activeVideo.instructor}` : " • Instructor por asignar"}
                 </p>
               </div>
               <button className={styles.modalClose} onClick={() => setActiveVideo(null)}>
@@ -571,7 +630,8 @@ export default function VideosPage() {
               >
                 <div style={{ fontWeight: 700, color: "#f8fafc", fontSize: "1rem" }}>{videoToDelete.title}</div>
                 <div style={{ fontSize: "0.82rem", color: "#e60026", marginTop: "0.2rem" }}>
-                  Categoría: {videoToDelete.category} • {videoToDelete.instructor}
+                  Categoría: {videoToDelete.category}
+                  {videoToDelete.instructor ? ` • ${videoToDelete.instructor}` : ""}
                 </div>
               </div>
 
@@ -692,13 +752,16 @@ export default function VideosPage() {
                 </div>
 
                 <div className={styles.formGroup}>
-                  <label>Sensei / Instructor</label>
+                  <label>Sensei / Instructor Asignado</label>
                   <input
                     type="text"
-                    placeholder="Sensei Adrian Silva"
+                    placeholder="Instructor asignado (opcional)..."
                     value={formData.instructor}
                     onChange={(e) => setFormData({ ...formData, instructor: e.target.value })}
                   />
+                  <small style={{ color: "#94a3b8", fontSize: "0.78rem" }}>
+                    Déjalo en blanco si aún no tiene instructor asignado o escribe el Sensei a cargo.
+                  </small>
                 </div>
 
                 <div className={styles.formGroup}>
@@ -722,6 +785,58 @@ export default function VideosPage() {
                 </button>
                 <button type="submit" className={styles.btnPrimary}>
                   Guardar y Publicar Video
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Assign / Edit Instructor Modal (Admin only) */}
+      {editingInstructorVideo && isAdmin && (
+        <div className={styles.modalOverlay} onClick={() => setEditingInstructorVideo(null)}>
+          <div className={styles.modalBox} style={{ maxWidth: "480px" }} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2>Asignar / Modificar Instructor</h2>
+              <button className={styles.modalClose} onClick={() => setEditingInstructorVideo(null)}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveInstructor}>
+              <div className={styles.modalBody}>
+                <p style={{ color: "#cbd5e1", fontSize: "0.9rem", lineHeight: 1.5, marginBottom: "1rem" }}>
+                  Define o actualiza el instructor asignado para el video:
+                  <br />
+                  <strong style={{ color: "#f8fafc" }}>{editingInstructorVideo.title}</strong>
+                </p>
+
+                <div className={styles.formGroup}>
+                  <label>Sensei / Instructor Asignado</label>
+                  <input
+                    type="text"
+                    autoFocus
+                    placeholder="Instructor asignado (o déjalo en blanco)..."
+                    value={editingInstructorVideo.instructor}
+                    onChange={(e) =>
+                      setEditingInstructorVideo({ ...editingInstructorVideo, instructor: e.target.value })
+                    }
+                  />
+                  <small style={{ color: "#94a3b8", fontSize: "0.78rem" }}>
+                    Puedes dejar este campo en blanco para que quede pendiente de asignar, o escribir el nombre del Sensei.
+                  </small>
+                </div>
+              </div>
+
+              <div className={styles.modalFooter}>
+                <button
+                  type="button"
+                  className={styles.btnSecondary}
+                  onClick={() => setEditingInstructorVideo(null)}
+                >
+                  Cancelar
+                </button>
+                <button type="submit" className={styles.btnPrimary}>
+                  Guardar Instructor
                 </button>
               </div>
             </form>
