@@ -1,23 +1,31 @@
 "use client";
 
-import { useState } from "react";
-import { Video, Play, Plus, Search, X, Clock, Award, Shield } from "lucide-react";
-import Image from "next/image";
+import { useState, useEffect } from "react";
+import { Video, Play, Plus, Search, X, Clock, Award, Trash2, CheckCircle2 } from "lucide-react";
 import styles from "../dojo-modules.module.css";
+
+type VideoCategory =
+  | "Katas Básicos"
+  | "Katas Avanzados"
+  | "Kumite & Combate"
+  | "Bunkai & Defensa Personal"
+  | "Acondicionamiento";
+
+type VideoLevel = "Principiante" | "Intermedio" | "Avanzado" | "Todos";
 
 interface DojoVideo {
   id: string;
   title: string;
-  category: "Katas Básicos" | "Katas Avanzados" | "Kumite & Combate" | "Bunkai & Defensa Personal" | "Acondicionamiento";
+  category: VideoCategory;
   duration: string;
-  level: "Principiante" | "Intermedio" | "Avanzado" | "Todos";
+  level: VideoLevel;
   instructor: string;
   description: string;
   videoUrl: string;
   thumbnail: string;
 }
 
-const VIDEOS: DojoVideo[] = [
+const INITIAL_VIDEOS: DojoVideo[] = [
   {
     id: "V-01",
     title: "Kata Bassai Dai: Desglose Técnico Completo",
@@ -75,14 +83,142 @@ const VIDEOS: DojoVideo[] = [
   },
 ];
 
+// Helper to convert YouTube/Vimeo URLs to embeddable URLs and extract thumbnails
+function parseVideoInput(url: string) {
+  const trimmed = url.trim();
+
+  // YouTube matchers (standard, short, embed, shorts)
+  const ytMatch = trimmed.match(
+    /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/|youtube\.com\/shorts\/)([^"&?\/\s]{11})/
+  );
+
+  if (ytMatch && ytMatch[1]) {
+    const videoId = ytMatch[1];
+    return {
+      embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1`,
+      thumbnail: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+    };
+  }
+
+  // Vimeo matcher
+  const vimeoMatch = trimmed.match(/(?:vimeo\.com\/)(\d+)/);
+  if (vimeoMatch && vimeoMatch[1]) {
+    return {
+      embedUrl: `https://player.vimeo.com/video/${vimeoMatch[1]}?autoplay=1`,
+      thumbnail: "/karate-action.jpg",
+    };
+  }
+
+  // Direct embed or default fallback
+  return {
+    embedUrl: trimmed.includes("embed") ? trimmed : `https://www.youtube-nocookie.com/embed/n4fCq7QdDks?autoplay=1`,
+    thumbnail: "/karate-action.jpg",
+  };
+}
+
 export default function VideosPage() {
+  const [videos, setVideos] = useState<DojoVideo[]>(INITIAL_VIDEOS);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Todas");
   const [activeVideo, setActiveVideo] = useState<DojoVideo | null>(null);
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const filtered = VIDEOS.filter((v) => {
-    const matchesSearch = v.title.toLowerCase().includes(searchTerm.toLowerCase()) || v.description.toLowerCase().includes(searchTerm.toLowerCase());
+  // Form State
+  const [formData, setFormData] = useState<{
+    title: string;
+    category: VideoCategory;
+    videoUrl: string;
+    instructor: string;
+    level: VideoLevel;
+    duration: string;
+    description: string;
+  }>({
+    title: "",
+    category: "Katas Básicos",
+    videoUrl: "",
+    instructor: "Sensei Adrian Silva",
+    level: "Todos",
+    duration: "10:00",
+    description: "",
+  });
+
+  // Load persisted videos from localStorage
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("sosakai_videos_library");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setVideos(parsed);
+        }
+      }
+    } catch {
+      // Ignorar error de parsing en localStorage
+    }
+  }, []);
+
+  const handleAddVideo = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.title || !formData.videoUrl) return;
+
+    const { embedUrl, thumbnail } = parseVideoInput(formData.videoUrl);
+
+    const newVideo: DojoVideo = {
+      id: `V-${Date.now()}`,
+      title: formData.title.trim(),
+      category: formData.category,
+      duration: formData.duration.trim() || "10:00",
+      level: formData.level,
+      instructor: formData.instructor.trim() || "Sensei Sosa-Kai",
+      description: formData.description.trim() || "Video instructivo oficial del Dojo Shito-Ryu Sosa-Kai.",
+      videoUrl: embedUrl,
+      thumbnail: thumbnail,
+    };
+
+    const updated = [newVideo, ...videos];
+    setVideos(updated);
+
+    try {
+      localStorage.setItem("sosakai_videos_library", JSON.stringify(updated));
+    } catch {
+      // localStorage may fail if storage is restricted
+    }
+
+    // Reset Form & show notification
+    setFormData({
+      title: "",
+      category: "Katas Básicos",
+      videoUrl: "",
+      instructor: "Sensei Adrian Silva",
+      level: "Todos",
+      duration: "10:00",
+      description: "",
+    });
+    setIsAddOpen(false);
+
+    setSuccessMessage(`¡Video "${newVideo.title}" agregado con éxito a la categoría ${newVideo.category}!`);
+    setTimeout(() => {
+      setSuccessMessage(null);
+    }, 4000);
+  };
+
+  const handleDeleteVideo = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm("¿Estás seguro de que deseas eliminar este video de la videoteca?")) {
+      const updated = videos.filter((v) => v.id !== id);
+      setVideos(updated);
+      try {
+        localStorage.setItem("sosakai_videos_library", JSON.stringify(updated));
+      } catch {}
+    }
+  };
+
+  const filtered = videos.filter((v) => {
+    const matchesSearch =
+      v.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      v.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      v.instructor.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCat = selectedCategory === "Todas" || v.category === selectedCategory;
     return matchesSearch && matchesCat;
   });
@@ -107,20 +243,48 @@ export default function VideosPage() {
         </div>
       </div>
 
+      {/* Success Notification Banner */}
+      {successMessage && (
+        <div
+          style={{
+            background: "rgba(16, 185, 129, 0.15)",
+            border: "1px solid rgba(16, 185, 129, 0.4)",
+            color: "#10b981",
+            padding: "0.85rem 1.25rem",
+            borderRadius: "12px",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.6rem",
+            fontWeight: 600,
+            animation: "fadeIn 0.2s ease",
+          }}
+        >
+          <CheckCircle2 size={20} />
+          <span>{successMessage}</span>
+        </div>
+      )}
+
       {/* Search and Category Filters */}
       <div className={styles.filterBar}>
         <div className={styles.searchBox}>
           <Search size={18} />
           <input
             type="text"
-            placeholder="Buscar videos por título o técnica..."
+            placeholder="Buscar videos por título, kata o sensei..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
 
         <div className={styles.filterTabs}>
-          {["Todas", "Katas Básicos", "Katas Avanzados", "Kumite & Combate", "Bunkai & Defensa Personal", "Acondicionamiento"].map((cat) => (
+          {[
+            "Todas",
+            "Katas Básicos",
+            "Katas Avanzados",
+            "Kumite & Combate",
+            "Bunkai & Defensa Personal",
+            "Acondicionamiento",
+          ].map((cat) => (
             <button
               key={cat}
               className={`${styles.filterTab} ${selectedCategory === cat ? styles.filterTabActive : ""}`}
@@ -137,33 +301,114 @@ export default function VideosPage() {
         {filtered.map((item) => (
           <div key={item.id} className={styles.itemCard} style={{ padding: "1rem" }}>
             {/* Thumbnail with Play Trigger */}
-            <div 
-              style={{ position: "relative", width: "100%", height: "180px", borderRadius: "12px", overflow: "hidden", cursor: "pointer", background: "#000" }}
+            <div
+              style={{
+                position: "relative",
+                width: "100%",
+                height: "190px",
+                borderRadius: "12px",
+                overflow: "hidden",
+                cursor: "pointer",
+                background: "#0a0c10",
+              }}
               onClick={() => setActiveVideo(item)}
             >
-              <Image 
-                src={item.thumbnail} 
-                alt={item.title} 
-                fill 
-                style={{ objectFit: "cover" }} 
+              <img
+                src={item.thumbnail}
+                alt={item.title}
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                onError={(e) => {
+                  e.currentTarget.src = "/karate-action.jpg";
+                }}
               />
-              <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <div style={{ width: 48, height: 48, borderRadius: "50%", background: "#e60026", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", boxShadow: "0 4px 15px rgba(230,0,38,0.6)" }}>
-                  <Play size={20} fill="#fff" style={{ marginLeft: 2 }} />
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  background: "rgba(0,0,0,0.35)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  transition: "background 0.2s ease",
+                }}
+              >
+                <div
+                  style={{
+                    width: 50,
+                    height: 50,
+                    borderRadius: "50%",
+                    background: "#e60026",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#fff",
+                    boxShadow: "0 4px 18px rgba(230,0,38,0.7)",
+                  }}
+                >
+                  <Play size={22} fill="#fff" style={{ marginLeft: 3 }} />
                 </div>
               </div>
 
-              <span style={{ position: "absolute", bottom: "0.6rem", right: "0.6rem", background: "rgba(0,0,0,0.8)", color: "#fff", fontSize: "0.75rem", fontWeight: 700, padding: "0.2rem 0.5rem", borderRadius: "4px", display: "flex", alignItems: "center", gap: "0.3rem" }}>
+              <span
+                style={{
+                  position: "absolute",
+                  bottom: "0.6rem",
+                  right: "0.6rem",
+                  background: "rgba(0,0,0,0.85)",
+                  color: "#fff",
+                  fontSize: "0.75rem",
+                  fontWeight: 700,
+                  padding: "0.2rem 0.55rem",
+                  borderRadius: "4px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.3rem",
+                }}
+              >
                 <Clock size={12} />
                 {item.duration}
               </span>
 
-              <span style={{ position: "absolute", top: "0.6rem", left: "0.6rem", background: "rgba(230,0,38,0.9)", color: "#fff", fontSize: "0.72rem", fontWeight: 700, padding: "0.2rem 0.6rem", borderRadius: "4px" }}>
+              <span
+                style={{
+                  position: "absolute",
+                  top: "0.6rem",
+                  left: "0.6rem",
+                  background: "#e60026",
+                  color: "#fff",
+                  fontSize: "0.72rem",
+                  fontWeight: 700,
+                  padding: "0.25rem 0.65rem",
+                  borderRadius: "4px",
+                }}
+              >
                 {item.level}
               </span>
+
+              <button
+                onClick={(e) => handleDeleteVideo(item.id, e)}
+                title="Eliminar Video"
+                style={{
+                  position: "absolute",
+                  top: "0.6rem",
+                  right: "0.6rem",
+                  background: "rgba(0,0,0,0.75)",
+                  border: "none",
+                  color: "#f87171",
+                  width: "28px",
+                  height: "28px",
+                  borderRadius: "6px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                }}
+              >
+                <Trash2 size={14} />
+              </button>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.45rem" }}>
               <div style={{ fontSize: "0.75rem", color: "#e60026", fontWeight: 700, textTransform: "uppercase" }}>
                 {item.category}
               </div>
@@ -175,14 +420,31 @@ export default function VideosPage() {
               </p>
             </div>
 
-            <div style={{ marginTop: "auto", display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "0.75rem" }}>
-              <span style={{ fontSize: "0.8rem", color: "#cbd5e1", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+            <div
+              style={{
+                marginTop: "auto",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                borderTop: "1px solid rgba(255,255,255,0.06)",
+                paddingTop: "0.75rem",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: "0.8rem",
+                  color: "#cbd5e1",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.4rem",
+                }}
+              >
                 <Award size={14} color="#e60026" />
                 {item.instructor}
               </span>
 
-              <button 
-                className={styles.btnPrimary} 
+              <button
+                className={styles.btnPrimary}
                 style={{ padding: "0.4rem 0.85rem", fontSize: "0.82rem" }}
                 onClick={() => setActiveVideo(item)}
               >
@@ -192,6 +454,16 @@ export default function VideosPage() {
           </div>
         ))}
       </div>
+
+      {filtered.length === 0 && (
+        <div style={{ textAlign: "center", padding: "4rem 1rem", color: "#94a3b8" }}>
+          <Video size={48} style={{ opacity: 0.3, marginBottom: "1rem" }} />
+          <h3>No se encontraron videos en esta categoría</h3>
+          <p style={{ fontSize: "0.9rem", marginTop: "0.4rem" }}>
+            Prueba seleccionando otra categoría o agrega un nuevo video con el botón superior.
+          </p>
+        </div>
+      )}
 
       {/* Video Player Modal */}
       {activeVideo && (
@@ -238,36 +510,107 @@ export default function VideosPage() {
                 <X size={20} />
               </button>
             </div>
-            <div className={styles.modalBody}>
-              <div className={styles.formGroup}>
-                <label>Título del Video</label>
-                <input type="text" placeholder="Ej. Kata Rohai: Aplicaciones de Bunkai" />
+
+            <form onSubmit={handleAddVideo}>
+              <div className={styles.modalBody}>
+                <div className={styles.formGroup}>
+                  <label>Título del Video *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ej. Kata Rohai: Aplicaciones de Bunkai"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  />
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label>Categoría Marcial *</label>
+                  <select
+                    value={formData.category}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value as VideoCategory })}
+                  >
+                    <option value="Katas Básicos">Katas Básicos</option>
+                    <option value="Katas Avanzados">Katas Avanzados</option>
+                    <option value="Kumite & Combate">Kumite & Combate</option>
+                    <option value="Bunkai & Defensa Personal">Bunkai & Defensa Personal</option>
+                    <option value="Acondicionamiento">Acondicionamiento</option>
+                  </select>
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label>URL del Video de YouTube o Vimeo *</label>
+                  <input
+                    type="url"
+                    required
+                    placeholder="https://www.youtube.com/watch?v=... o https://youtu.be/..."
+                    value={formData.videoUrl}
+                    onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
+                  />
+                  <small style={{ color: "#94a3b8", fontSize: "0.78rem" }}>
+                    Puedes pegar cualquier enlace de YouTube o Vimeo; se convertirá y extraerá la miniatura automáticamente.
+                  </small>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+                  <div className={styles.formGroup}>
+                    <label>Nivel Técnico</label>
+                    <select
+                      value={formData.level}
+                      onChange={(e) => setFormData({ ...formData, level: e.target.value as VideoLevel })}
+                    >
+                      <option value="Todos">Todos los Grados</option>
+                      <option value="Principiante">Principiante (Blancas/Amarillas)</option>
+                      <option value="Intermedio">Intermedio (Naranjas/Verdes/Azules)</option>
+                      <option value="Avanzado">Avanzado (Marrón/Negra)</option>
+                    </select>
+                  </div>
+
+                  <div className={styles.formGroup}>
+                    <label>Duración Aprox.</label>
+                    <input
+                      type="text"
+                      placeholder="12:30"
+                      value={formData.duration}
+                      onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label>Sensei / Instructor</label>
+                  <input
+                    type="text"
+                    placeholder="Sensei Adrian Silva"
+                    value={formData.instructor}
+                    onChange={(e) => setFormData({ ...formData, instructor: e.target.value })}
+                  />
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label>Descripción Técnica</label>
+                  <textarea
+                    rows={3}
+                    placeholder="Explica las técnicas tratadas, puntos clave de kime o precauciones..."
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  />
+                </div>
               </div>
-              <div className={styles.formGroup}>
-                <label>Categoría</label>
-                <select>
-                  <option>Katas Básicos</option>
-                  <option>Katas Avanzados</option>
-                  <option>Kumite & Combate</option>
-                  <option>Bunkai & Defensa Personal</option>
-                  <option>Acondicionamiento</option>
-                </select>
+
+              <div className={styles.modalFooter}>
+                <button
+                  type="button"
+                  className={styles.btnSecondary}
+                  onClick={() => setIsAddOpen(false)}
+                >
+                  Cancelar
+                </button>
+                <button type="submit" className={styles.btnPrimary}>
+                  Guardar y Publicar Video
+                </button>
               </div>
-              <div className={styles.formGroup}>
-                <label>URL del Video (YouTube o Vimeo)</label>
-                <input type="url" placeholder="https://www.youtube.com/watch?v=..." />
-              </div>
-              <div className={styles.formGroup}>
-                <label>Sensei / Instructor</label>
-                <input type="text" placeholder="Sensei Adrian Silva" />
-              </div>
-            </div>
-            <div className={styles.modalFooter}>
-              <button className={styles.btnSecondary} onClick={() => setIsAddOpen(false)}>Cancelar</button>
-              <button className={styles.btnPrimary} onClick={() => { alert("Video agregado a la videoteca oficial."); setIsAddOpen(false); }}>
-                Guardar Video
-              </button>
-            </div>
+            </form>
           </div>
         </div>
       )}
