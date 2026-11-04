@@ -18,8 +18,8 @@ export default async function RegisterPage({
       <div className={styles.authBackground}></div>
       
       <div className={styles.authCard}>
-        <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: 'var(--dojo-white-dim)', marginBottom: '2rem', fontSize: '0.9rem' }}>
-          <ArrowLeft size={16} /> Volver al inicio
+        <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: 'var(--dojo-white-dim)', marginBottom: '0.65rem', fontSize: '0.82rem' }}>
+          <ArrowLeft size={14} /> Volver al inicio
         </Link>
 
         <div className={styles.logoContainer}>
@@ -27,9 +27,9 @@ export default async function RegisterPage({
             <Image 
               src="/logo-sosa-kai.png" 
               alt="Sosa Kai Logo" 
-              width={48} 
-              height={48} 
-              style={{ objectFit: 'contain', marginRight: '0.5rem' }}
+              width={38} 
+              height={38} 
+              style={{ objectFit: 'contain', marginRight: '0.45rem' }}
               priority
             />
             <span>SOSA</span><span>KAI</span>
@@ -37,24 +37,37 @@ export default async function RegisterPage({
         </div>
         
         <h1 className={styles.title}>Registro Oficial Sosa Kai</h1>
-        <p className={styles.subtitle}>Crea tu cuenta de Sensei, Instructor o Tutor para acceder al portal.</p>
+        <p className={styles.subtitle}>Crea tu cuenta de Sensei o Tutor para acceder al portal.</p>
 
         {displayError && <div className={styles.errorBox}>{displayError}</div>}
 
         <form action={signup}>
-          <div className={styles.formGroup}>
-            <label className={styles.label} htmlFor="userType">Tipo de Cuenta / Rol</label>
-            <select 
-              className={styles.input}
-              id="userType"
-              name="userType"
-              defaultValue="sensei"
-              style={{ background: '#131720', color: '#f8fafc', cursor: 'pointer' }}
-            >
-              <option value="sensei">🥋 Sensei / Instructor del Dojo</option>
-              <option value="parent">👨‍👩‍👦 Padre o Tutor</option>
-              <option value="student">🥋 Alumno / Karateka</option>
-            </select>
+          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '0.65rem' }}>
+            <div className={styles.formGroup}>
+              <label className={styles.label} htmlFor="userType">Tipo de Cuenta</label>
+              <select 
+                className={styles.input}
+                id="userType"
+                name="userType"
+                defaultValue="sensei"
+                style={{ background: '#131720', color: '#f8fafc', cursor: 'pointer' }}
+              >
+                <option value="sensei">🥋 Sensei / Instructor</option>
+                <option value="parent">👨‍👩‍👦 Padre o Tutor</option>
+                <option value="student">🥋 Alumno / Karateka</option>
+              </select>
+            </div>
+
+            <div className={styles.formGroup}>
+              <label className={styles.label} htmlFor="grade">Grado / Dan</label>
+              <input 
+                className={styles.input}
+                id="grade" 
+                name="grade" 
+                type="text" 
+                placeholder="Ej. 4to Dan"
+              />
+            </div>
           </div>
 
           <div className={styles.formGroup}>
@@ -66,17 +79,6 @@ export default async function RegisterPage({
               type="text" 
               placeholder="Ej. Sensei Adrian Silva o Carlos Mendoza"
               required 
-            />
-          </div>
-
-          <div className={styles.formGroup}>
-            <label className={styles.label} htmlFor="grade">Grado Marcial / Dan (Opcional)</label>
-            <input 
-              className={styles.input}
-              id="grade" 
-              name="grade" 
-              type="text" 
-              placeholder="Ej. Cinta Negra (4to Dan)"
             />
           </div>
 

@@ -17,8 +17,8 @@ export default async function LoginPage({
       <div className={styles.authBackground}></div>
       
       <div className={styles.authCard}>
-        <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: 'var(--dojo-white-dim)', marginBottom: '2rem', fontSize: '0.9rem' }}>
-          <ArrowLeft size={16} /> Volver al inicio
+        <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: 'var(--dojo-white-dim)', marginBottom: '0.65rem', fontSize: '0.82rem' }}>
+          <ArrowLeft size={14} /> Volver al inicio
         </Link>
 
         <div className={styles.logoContainer}>
@@ -26,9 +26,9 @@ export default async function LoginPage({
             <Image 
               src="/logo-sosa-kai.png" 
               alt="Sosa Kai Logo" 
-              width={48} 
-              height={48} 
-              style={{ objectFit: 'contain', marginRight: '0.5rem' }}
+              width={38} 
+              height={38} 
+              style={{ objectFit: 'contain', marginRight: '0.45rem' }}
               priority
             />
             <span>SOSA</span><span>KAI</span>

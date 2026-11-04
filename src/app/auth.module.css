@@ -6,7 +6,7 @@
   background: var(--dojo-black);
   position: relative;
   overflow: hidden;
-  padding: 2rem;
+  padding: 1rem;
 }
 
 .authBackground {
@@ -24,23 +24,23 @@
   background: var(--glass-bg);
   backdrop-filter: blur(20px);
   border: 1px solid var(--glass-border);
-  border-radius: 24px;
+  border-radius: 20px;
   width: 100%;
-  max-width: 480px;
-  padding: 3rem;
+  max-width: 460px;
+  padding: 1.5rem 1.85rem;
   position: relative;
   z-index: 1;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-  animation: fade-in-up 0.6s var(--transition-smooth) forwards;
+  box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.6);
+  animation: fade-in-up 0.5s var(--transition-smooth) forwards;
 }
 
 .logoContainer {
   text-align: center;
-  margin-bottom: 2rem;
+  margin-bottom: 0.65rem;
 }
 
 .logo {
-  font-size: 2rem;
+  font-size: 1.45rem;
   font-weight: 900;
   letter-spacing: 2px;
   display: inline-flex;
@@ -52,40 +52,42 @@
 
 .title {
   text-align: center;
-  font-size: 1.75rem;
-  margin-bottom: 0.5rem;
+  font-size: 1.35rem;
+  margin-bottom: 0.25rem;
+  font-weight: 800;
 }
 
 .subtitle {
   text-align: center;
   color: var(--dojo-white-dim);
-  font-size: 0.95rem;
-  margin-bottom: 2.5rem;
+  font-size: 0.85rem;
+  margin-bottom: 1.15rem;
+  line-height: 1.4;
 }
 
 .formGroup {
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem;
 }
 
 .label {
   display: block;
-  font-size: 0.85rem;
-  font-weight: 600;
+  font-size: 0.72rem;
+  font-weight: 700;
   color: var(--dojo-white-dim);
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.3rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .input {
   width: 100%;
-  background: rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  padding: 1rem;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 9px;
+  padding: 0.6rem 0.85rem;
   color: var(--dojo-white);
   font-family: var(--font-main);
-  font-size: 1rem;
+  font-size: 0.9rem;
   transition: var(--transition-fast);
 }
 
@@ -103,17 +105,19 @@
   width: 100%;
   background: var(--dojo-red);
   color: var(--dojo-white);
-  padding: 1rem;
-  border-radius: 12px;
-  font-weight: 600;
-  font-size: 1rem;
-  margin-top: 1rem;
+  padding: 0.75rem;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin-top: 0.6rem;
+  border: none;
+  cursor: pointer;
   transition: var(--transition-fast);
 }
 
 .submitBtn:hover {
   background: var(--dojo-red-hover);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   box-shadow: 0 4px 15px rgba(255, 51, 102, 0.4);
 }
 
@@ -125,9 +129,9 @@
 
 .linkText {
   text-align: center;
-  margin-top: 2rem;
+  margin-top: 0.85rem;
   color: var(--dojo-white-dim);
-  font-size: 0.9rem;
+  font-size: 0.82rem;
 }
 
 .linkText a {
@@ -145,9 +149,26 @@
   background: rgba(255, 51, 102, 0.1);
   border: 1px solid rgba(255, 51, 102, 0.3);
   color: var(--dojo-red);
-  padding: 1rem;
+  padding: 0.6rem 0.85rem;
   border-radius: 8px;
-  margin-bottom: 1.5rem;
-  font-size: 0.9rem;
+  margin-bottom: 0.85rem;
+  font-size: 0.82rem;
+}
+
+.footerText {
+  margin-top: 1rem;
+  font-size: 0.82rem;
   text-align: center;
+  color: var(--dojo-white-dim);
+}
+
+.footerText .link {
+  color: var(--dojo-blue);
+  font-weight: 600;
+  transition: var(--transition-fast);
+}
+
+.footerText .link:hover {
+  color: #0088FF;
+  text-decoration: underline;
 }
