@@ -33,9 +33,9 @@ export function UserProvider({
 
   const isAdmin =
     isSuperAdmin ||
+    role.toLowerCase() === "admin" ||
+    role.toLowerCase() === "administrador" ||
     role.toLowerCase().includes("admin") ||
-    role.toLowerCase().includes("sensei") ||
-    role.toLowerCase().includes("instructor") ||
     email === "admin@admin.com" ||
     email === "admin@sosakai.com";
 
