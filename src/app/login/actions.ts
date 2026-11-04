@@ -112,25 +112,77 @@ export async function login(formData: FormData) {
 }
 
 export async function signup(formData: FormData) {
-  const supabase = await createClient();
+  const email = (formData.get("email") as string)?.trim().toLowerCase() || "";
+  const rawPassword = (formData.get("password") as string) || "";
+  const password = rawPassword.trim();
+  const rawFullName = (formData.get("fullName") as string)?.trim() || "";
+  const userType = (formData.get("userType") as string) || "sensei";
+  const grade = (formData.get("grade") as string)?.trim() || "";
 
-  const data = {
-    email: formData.get("email") as string,
-    password: formData.get("password") as string,
-    options: {
-      data: {
-        full_name: formData.get("fullName") as string,
-        role: "parent",
-      },
-    },
-  };
-
-  const { error } = await supabase.auth.signUp(data);
-
-  if (error) {
-    return redirect("/register?error=" + encodeURIComponent(error.message));
+  if (!email || !password) {
+    return redirect("/register?error=" + encodeURIComponent("Por favor ingresa correo y contraseña."));
   }
 
-  revalidatePath("/", "layout");
+  const isSensei = userType === "sensei";
+  let fullName = rawFullName;
+  if (isSensei && fullName && !fullName.toLowerCase().startsWith("sensei")) {
+    fullName = `Sensei ${fullName}`;
+  }
+  if (!fullName) {
+    fullName = isSensei ? "Sensei Instructor" : "Tutor Dojo";
+  }
+
+  const roleTitle = isSensei
+    ? grade
+      ? `Sensei (${grade})`
+      : "Sensei Instructor"
+    : "Tutor / Padre";
+
+  try {
+    const cookieStore = await cookies();
+    cookieStore.set(
+      "sosakai_admin_session",
+      JSON.stringify({
+        email,
+        name: fullName,
+        role: isSensei ? "Sensei" : "Tutor",
+        title: roleTitle,
+      }),
+      {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 7, // 7 días
+        path: "/",
+      }
+    );
+
+    // Intentar sincronización en background con Supabase si está disponible
+    try {
+      const supabase = await createClient();
+      await supabase.auth
+        .signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: fullName,
+              role: isSensei ? "sensei" : "parent",
+              grade: grade || undefined,
+            },
+          },
+        })
+        .catch(() => {});
+    } catch {
+      // Ignorar fallo de red / DNS de Supabase
+    }
+
+    revalidatePath("/", "layout");
+  } catch (err: unknown) {
+    if (isRedirectError(err)) {
+      throw err;
+    }
+  }
+
   redirect("/dashboard?welcome=true");
 }

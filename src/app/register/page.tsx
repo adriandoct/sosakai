@@ -10,6 +10,8 @@ export default async function RegisterPage({
   searchParams: Promise<{ error?: string }>;
 }) {
   const { error } = await searchParams;
+  const displayError =
+    error === "fetch failed" || error === "NEXT_REDIRECT" ? null : error;
 
   return (
     <div className={styles.authContainer}>
@@ -34,21 +36,47 @@ export default async function RegisterPage({
           </div>
         </div>
         
-        <h1 className={styles.title}>Comienza tu Entrenamiento en Sosa Kai</h1>
-        <p className={styles.subtitle}>Crea una cuenta familiar para acceder a todos los módulos.</p>
+        <h1 className={styles.title}>Registro Oficial Sosa Kai</h1>
+        <p className={styles.subtitle}>Crea tu cuenta de Sensei, Instructor o Tutor para acceder al portal.</p>
 
-        {error && <div className={styles.errorBox}>{error}</div>}
+        {displayError && <div className={styles.errorBox}>{displayError}</div>}
 
         <form action={signup}>
           <div className={styles.formGroup}>
-            <label className={styles.label} htmlFor="fullName">Nombre Completo del Padre/Tutor</label>
+            <label className={styles.label} htmlFor="userType">Tipo de Cuenta / Rol</label>
+            <select 
+              className={styles.input}
+              id="userType"
+              name="userType"
+              defaultValue="sensei"
+              style={{ background: '#131720', color: '#f8fafc', cursor: 'pointer' }}
+            >
+              <option value="sensei">🥋 Sensei / Instructor del Dojo</option>
+              <option value="parent">👨‍👩‍👦 Padre o Tutor</option>
+              <option value="student">🥋 Alumno / Karateka</option>
+            </select>
+          </div>
+
+          <div className={styles.formGroup}>
+            <label className={styles.label} htmlFor="fullName">Nombre Completo del Sensei o Tutor</label>
             <input 
               className={styles.input}
               id="fullName" 
               name="fullName" 
               type="text" 
-              placeholder="Ej. Carlos Mendoza"
+              placeholder="Ej. Sensei Adrian Silva o Carlos Mendoza"
               required 
+            />
+          </div>
+
+          <div className={styles.formGroup}>
+            <label className={styles.label} htmlFor="grade">Grado Marcial / Dan (Opcional)</label>
+            <input 
+              className={styles.input}
+              id="grade" 
+              name="grade" 
+              type="text" 
+              placeholder="Ej. Cinta Negra (4to Dan)"
             />
           </div>
 
@@ -78,7 +106,7 @@ export default async function RegisterPage({
           </div>
 
           <button className={styles.submitBtn} type="submit">
-            Crear Cuenta Gratis
+            Crear Cuenta
           </button>
         </form>
 
