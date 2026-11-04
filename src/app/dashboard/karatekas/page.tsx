@@ -17,6 +17,8 @@ import {
   Power,
   PowerOff,
   Lock,
+  Trash2,
+  AlertTriangle,
 } from "lucide-react";
 import styles from "../dojo-modules.module.css";
 
@@ -126,6 +128,7 @@ export default function KaratekasPage() {
     name: string;
     password: string;
   } | null>(null);
+  const [karatekaToDelete, setKaratekaToDelete] = useState<Karateka | null>(null);
   const [notification, setNotification] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   // Form state for new karateka
@@ -206,6 +209,25 @@ export default function KaratekasPage() {
     setNotification({
       type: "success",
       text: `Contraseña de acceso actualizada para ${targetName}.`,
+    });
+    setTimeout(() => setNotification(null), 3500);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!karatekaToDelete) return;
+
+    const updated = karatekas.filter((k) => k.id !== karatekaToDelete.id);
+    setKaratekas(updated);
+    try {
+      localStorage.setItem("sosakai_karatekas_list", JSON.stringify(updated));
+    } catch {}
+
+    const deletedName = karatekaToDelete.name;
+    setKaratekaToDelete(null);
+
+    setNotification({
+      type: "success",
+      text: `El karateka "${deletedName}" ha sido eliminado del registro.`,
     });
     setTimeout(() => setNotification(null), 3500);
   };
@@ -530,8 +552,14 @@ export default function KaratekasPage() {
 
                     <button
                       type="button"
-                      className={k.status === "Inactivo" ? styles.btnSuccess : styles.btnDelete}
-                      style={{ padding: "0.25rem 0.6rem", fontSize: "0.78rem" }}
+                      className={k.status === "Inactivo" ? styles.btnSuccess : styles.btnSecondary}
+                      style={{
+                        padding: "0.3rem 0.6rem",
+                        fontSize: "0.78rem",
+                        color: k.status === "Inactivo" ? "#10b981" : "#f59e0b",
+                        borderColor: k.status === "Inactivo" ? "rgba(16, 185, 129, 0.3)" : "rgba(245, 158, 11, 0.3)",
+                        background: k.status === "Inactivo" ? "rgba(16, 185, 129, 0.1)" : "rgba(245, 158, 11, 0.1)",
+                      }}
                       onClick={() => handleToggleStatus(k.id)}
                       title={k.status === "Inactivo" ? "Activar karateka" : "Desactivar karateka"}
                     >
@@ -546,6 +574,17 @@ export default function KaratekasPage() {
                           <span>Desactivar</span>
                         </>
                       )}
+                    </button>
+
+                    <button
+                      type="button"
+                      className={styles.btnDelete}
+                      style={{ padding: "0.3rem 0.6rem", fontSize: "0.78rem" }}
+                      onClick={() => setKaratekaToDelete(k)}
+                      title="Eliminar este karateka permanentemente"
+                    >
+                      <Trash2 size={12} />
+                      <span>Borrar</span>
                     </button>
                   </div>
                 </td>
@@ -709,6 +748,67 @@ export default function KaratekasPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Delete Confirmation Modal */}
+      {karatekaToDelete && (
+        <div className={styles.modalOverlay} onClick={() => setKaratekaToDelete(null)}>
+          <div className={styles.modalBox} style={{ maxWidth: "480px" }} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2 style={{ color: "#f87171", display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                <AlertTriangle size={22} color="#f87171" />
+                Confirmar Eliminación
+              </h2>
+              <button className={styles.modalClose} onClick={() => setKaratekaToDelete(null)}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className={styles.modalBody}>
+              <p style={{ color: "#cbd5e1", fontSize: "0.95rem", lineHeight: 1.6 }}>
+                ¿Estás seguro de que deseas eliminar permanentemente del dojo al karateka:
+              </p>
+              <div
+                style={{
+                  background: "#0a0c10",
+                  padding: "0.9rem 1.1rem",
+                  borderRadius: "10px",
+                  border: "1px solid rgba(255,255,255,0.06)",
+                  marginTop: "0.5rem",
+                  marginBottom: "1rem",
+                }}
+              >
+                <div style={{ fontWeight: 700, color: "#f8fafc", fontSize: "1.05rem" }}>
+                  {karatekaToDelete.name}
+                </div>
+                <div style={{ fontSize: "0.82rem", color: "#94a3b8", marginTop: "0.25rem" }}>
+                  {karatekaToDelete.id} • {karatekaToDelete.belt} • Tutor: {karatekaToDelete.tutor}
+                </div>
+              </div>
+
+              <p style={{ color: "#94a3b8", fontSize: "0.82rem", margin: 0 }}>
+                Esta acción removerá su historial, asistencia y credenciales del listado oficial.
+              </p>
+            </div>
+
+            <div className={styles.modalFooter}>
+              <button
+                type="button"
+                className={styles.btnSecondary}
+                onClick={() => setKaratekaToDelete(null)}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className={styles.btnDanger}
+                onClick={handleConfirmDelete}
+              >
+                <Trash2 size={15} />
+                Eliminar Karateka
+              </button>
+            </div>
           </div>
         </div>
       )}
