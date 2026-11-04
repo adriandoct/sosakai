@@ -41,21 +41,32 @@ interface DojoVideo {
 
 const DEMO_VIDEO_IDS = new Set(["V-01", "V-02", "V-03", "V-04", "V-05"]);
 
-function isDemoVideo(v: DojoVideo) {
-  if (DEMO_VIDEO_IDS.has(v.id)) return true;
-  const title = (v.title || "").toLowerCase();
-  if (
-    title.includes("kata bassai dai") ||
-    title.includes("pinan shodan") ||
-    title.includes("tácticas de kumite") ||
-    title.includes("tacticas de kumite") ||
-    title.includes("kata seienchin") ||
-    title.includes("acondicionamiento físico") ||
-    title.includes("acondicionamiento fisico")
-  ) {
-    return true;
-  }
-  return false;
+// Load persisted videos from local storage, strictly keeping all user videos
+function loadPersistedVideos(): DojoVideo[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw =
+      localStorage.getItem("sosakai_videos_library") ||
+      localStorage.getItem("sosakai_videos_library_backup");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        // Only strip the old initial hardcoded demo IDs (V-01..V-05).
+        // NEVER filter or delete by title - all user videos are permanently preserved!
+        return parsed.filter((v: DojoVideo) => v && v.id && !DEMO_VIDEO_IDS.has(v.id));
+      }
+    }
+  } catch {}
+  return [];
+}
+
+function savePersistedVideos(list: DojoVideo[]) {
+  if (typeof window === "undefined") return;
+  try {
+    const json = JSON.stringify(list);
+    localStorage.setItem("sosakai_videos_library", json);
+    localStorage.setItem("sosakai_videos_library_backup", json);
+  } catch {}
 }
 
 const INITIAL_VIDEOS: DojoVideo[] = [];
@@ -128,25 +139,11 @@ export default function VideosPage() {
     description: "",
   });
 
-  // Load persisted videos from localStorage, filtering out all demo videos
+  // Load persisted videos from storage on mount
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem("sosakai_videos_library");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-          // Keep only non-demo videos (videos uploaded/added by the user)
-          const userOnlyVideos = parsed.filter((v: DojoVideo) => !isDemoVideo(v));
-          setVideos(userOnlyVideos);
-          localStorage.setItem("sosakai_videos_library", JSON.stringify(userOnlyVideos));
-          return;
-        }
-      }
-      setVideos([]);
-    } catch {
-      // Ignorar error de parsing en localStorage
-      setVideos([]);
-    }
+    const loaded = loadPersistedVideos();
+    setVideos(loaded);
+    savePersistedVideos(loaded);
   }, []);
 
   const handleAddVideo = (e: React.FormEvent) => {
@@ -172,12 +169,13 @@ export default function VideosPage() {
       thumbnail: thumbnail,
     };
 
-    const updated = [newVideo, ...videos];
-    setVideos(updated);
-
-    try {
-      localStorage.setItem("sosakai_videos_library", JSON.stringify(updated));
-    } catch {}
+    setVideos((prev) => {
+      const currentPersisted = loadPersistedVideos();
+      const base = currentPersisted.length > 0 ? currentPersisted : prev;
+      const updated = [newVideo, ...base.filter((v) => v.id !== newVideo.id)];
+      savePersistedVideos(updated);
+      return updated;
+    });
 
     // Reset Form & show notification
     setFormData({
@@ -203,14 +201,13 @@ export default function VideosPage() {
     if (!editingInstructorVideo) return;
 
     const newInstructor = editingInstructorVideo.instructor.trim();
-    const updated = videos.map((v) =>
-      v.id === editingInstructorVideo.id ? { ...v, instructor: newInstructor } : v
-    );
-    setVideos(updated);
-
-    try {
-      localStorage.setItem("sosakai_videos_library", JSON.stringify(updated));
-    } catch {}
+    setVideos((prev) => {
+      const updated = prev.map((v) =>
+        v.id === editingInstructorVideo.id ? { ...v, instructor: newInstructor } : v
+      );
+      savePersistedVideos(updated);
+      return updated;
+    });
 
     const title = editingInstructorVideo.title;
     setEditingInstructorVideo(null);
@@ -233,12 +230,11 @@ export default function VideosPage() {
       return;
     }
 
-    const updated = videos.filter((v) => v.id !== videoToDelete.id);
-    setVideos(updated);
-
-    try {
-      localStorage.setItem("sosakai_videos_library", JSON.stringify(updated));
-    } catch {}
+    setVideos((prev) => {
+      const updated = prev.filter((v) => v.id !== videoToDelete.id);
+      savePersistedVideos(updated);
+      return updated;
+    });
 
     const deletedTitle = videoToDelete.title;
     setVideoToDelete(null);
