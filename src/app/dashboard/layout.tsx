@@ -20,10 +20,17 @@ export default async function DashboardLayout({
   if (adminSession?.value) {
     try {
       const parsed = JSON.parse(adminSession.value);
+      const emailLower = (parsed.email || "").toLowerCase();
+      const isAdrianSensei =
+        emailLower.includes("adriandoct") ||
+        emailLower.includes("adrian.silva");
+
       currentUser = {
-        full_name: parsed.name || "Administrador",
+        full_name: isAdrianSensei
+          ? "Sensei Adrian Silva"
+          : parsed.name || "Administrador",
         email: parsed.email || "admin@admin.com",
-        role: parsed.role || "Admin",
+        role: isAdrianSensei ? "Sensei" : parsed.role || "Admin",
       };
     } catch {
       currentUser = {
@@ -40,10 +47,19 @@ export default async function DashboardLayout({
       } = await supabase.auth.getUser();
 
       if (user) {
+        const userEmail = (user.email || "").toLowerCase();
+        const isAdrianSensei =
+          userEmail.includes("adriandoct") ||
+          userEmail.includes("adrian.silva");
+
         currentUser = {
-          full_name: user.user_metadata?.full_name || user.email || "Director",
+          full_name: isAdrianSensei
+            ? "Sensei Adrian Silva"
+            : user.user_metadata?.full_name || user.email || "Director",
           email: user.email,
-          role: user.user_metadata?.role || "Admin",
+          role: isAdrianSensei
+            ? "Sensei"
+            : user.user_metadata?.role || "Admin",
         };
       }
     } catch {

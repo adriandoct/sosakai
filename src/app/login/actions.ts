@@ -17,8 +17,8 @@ const ADMIN_ACCOUNTS: Record<string, { name: string; role: string }> = {
   "superadmin@admin.com": { name: "Super Administrador", role: "Super Admin" },
   "admin@admin.com": { name: "Administrador Dojo", role: "Admin" },
   "admin@sosakai.com": { name: "Administrador General", role: "Super Admin" },
-  "adriandoct@gmail.com": { name: "Sensei Adrian Silva", role: "Super Admin" },
-  "adrian.silva@cecytebc.edu.mx": { name: "Sensei Adrian Silva", role: "Super Admin" },
+  "adriandoct@gmail.com": { name: "Sensei Adrian Silva", role: "Sensei" },
+  "adrian.silva@cecytebc.edu.mx": { name: "Sensei Adrian Silva", role: "Sensei" },
 };
 
 function isRedirectError(err: unknown): boolean {
@@ -54,14 +54,19 @@ export async function login(formData: FormData) {
     password.length >= 6; // Permite la contraseña propia elegida por el usuario
 
   if (isAuthorizedEmail && isPasswordMatch) {
+    const isSenseiUser =
+      email.includes("adrian") ||
+      email.includes("adriandoct") ||
+      ADMIN_ACCOUNTS[email]?.role === "Sensei";
+
     const account = ADMIN_ACCOUNTS[email] || {
       name:
-        email.includes("adrian") || email.includes("adriandoct")
+        isSenseiUser
           ? "Sensei Adrian Silva"
           : email.includes("super")
           ? "Super Administrador"
           : "Administrador Dojo",
-      role: email.includes("super") || email.includes("adrian") ? "Super Admin" : "Admin",
+      role: isSenseiUser ? "Sensei" : email.includes("super") ? "Super Admin" : "Admin",
     };
 
     const cookieStore = await cookies();

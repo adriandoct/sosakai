@@ -530,10 +530,18 @@ export default function VideosPage() {
       {filtered.length === 0 && (
         <div style={{ textAlign: "center", padding: "4rem 1rem", color: "#94a3b8" }}>
           <Video size={48} style={{ opacity: 0.3, marginBottom: "1rem" }} />
-          <h3>{videos.length === 0 ? "Videoteca lista para tus videos" : "No se encontraron videos con ese filtro"}</h3>
+          <h3>
+            {videos.length === 0
+              ? isAdmin
+                ? "Videoteca lista para tus videos"
+                : "Videoteca Oficial Sosa Kai"
+              : "No se encontraron videos con ese filtro"}
+          </h3>
           <p style={{ fontSize: "0.9rem", marginTop: "0.4rem" }}>
             {videos.length === 0
-              ? "Aún no hay videos en la videoteca oficial. Haz clic en 'Agregar Video' para publicar el primero."
+              ? isAdmin
+                ? "Aún no hay videos en la videoteca oficial. Haz clic en 'Agregar Video' para publicar el primero."
+                : "Aún no hay videos publicados en la videoteca oficial por la administración."
               : "Prueba seleccionando otra categoría o limpiando la búsqueda."}
           </p>
           {videos.length === 0 && isAdmin && (
