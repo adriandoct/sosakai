@@ -28,20 +28,37 @@ export function UserProvider({
   const role = user?.role || "";
   const email = (user?.email || "").toLowerCase();
 
-  const isSuperAdmin =
-    role.toLowerCase().includes("super") ||
+  // Cuentas maestras autorizadas expresamente como Super Admin
+  const isMasterAdminEmail =
     email === "superadmin@admin.com" ||
     email === "adriandoct@gmail.com" ||
     email === "adrian.silva@cecytebc.edu.mx" ||
     email.includes("adriandoct");
 
+  const isMasterAdmin =
+    email === "admin@admin.com" || email === "admin@sosakai.com";
+
+  // Los senseis, alumnos, karatekas y tutores NUNCA son administradores
+  const isRestrictedRole =
+    role.toLowerCase().includes("sensei") ||
+    role.toLowerCase().includes("instructor") ||
+    role.toLowerCase().includes("alumno") ||
+    role.toLowerCase().includes("student") ||
+    role.toLowerCase().includes("karateka") ||
+    role.toLowerCase().includes("tutor") ||
+    role.toLowerCase().includes("padre");
+
+  const isSuperAdmin =
+    isMasterAdminEmail ||
+    (!isRestrictedRole && role.toLowerCase().includes("super"));
+
   const isAdmin =
     isSuperAdmin ||
-    role.toLowerCase() === "admin" ||
-    role.toLowerCase() === "administrador" ||
-    role.toLowerCase().includes("admin") ||
-    email === "admin@admin.com" ||
-    email === "admin@sosakai.com";
+    isMasterAdmin ||
+    (!isRestrictedRole &&
+      (role.toLowerCase() === "admin" ||
+        role.toLowerCase() === "administrador" ||
+        role.toLowerCase().includes("admin")));
 
   return (
     <UserContext.Provider

@@ -151,6 +151,9 @@ export async function signup(formData: FormData) {
       : "Sensei Instructor"
     : "Tutor / Padre";
 
+  const isStudent = userType === "student";
+  const assignedRole = isSensei ? "Sensei" : isStudent ? "Alumno" : "Tutor";
+
   try {
     const cookieStore = await cookies();
     cookieStore.set(
@@ -158,7 +161,7 @@ export async function signup(formData: FormData) {
       JSON.stringify({
         email,
         name: fullName,
-        role: isSensei ? "Sensei" : "Tutor",
+        role: assignedRole,
         title: roleTitle,
       }),
       {

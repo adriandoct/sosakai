@@ -149,7 +149,10 @@ export default function VideosPage() {
   const handleAddVideo = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAdmin) {
-      setNotification({ type: "error", text: "Acción no autorizada: Solo Super Admin y Admin pueden agregar videos." });
+      setNotification({
+        type: "error",
+        text: "Acción no autorizada: Los Senseis y Alumnos solo pueden ver videos. Únicamente Super Admin y Admin pueden subir videos.",
+      });
       return;
     }
 
@@ -225,7 +228,10 @@ export default function VideosPage() {
     if (!videoToDelete) return;
 
     if (!isAdmin) {
-      setNotification({ type: "error", text: "Permiso denegado: Solo Super Admin y Admin pueden eliminar videos." });
+      setNotification({
+        type: "error",
+        text: "Permiso denegado: Los Senseis y Alumnos solo pueden ver videos. Únicamente Super Admin y Admin pueden eliminar videos.",
+      });
       setVideoToDelete(null);
       return;
     }
