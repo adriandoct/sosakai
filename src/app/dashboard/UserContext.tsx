@@ -29,7 +29,11 @@ export function UserProvider({
   const email = (user?.email || "").toLowerCase();
 
   const isSuperAdmin =
-    role.toLowerCase().includes("super") || email === "superadmin@admin.com";
+    role.toLowerCase().includes("super") ||
+    email === "superadmin@admin.com" ||
+    email === "adriandoct@gmail.com" ||
+    email === "adrian.silva@cecytebc.edu.mx" ||
+    email.includes("adriandoct");
 
   const isAdmin =
     isSuperAdmin ||

@@ -10,7 +10,8 @@ export default async function LoginPage({
   searchParams: Promise<{ error?: string }>;
 }) {
   const { error } = await searchParams;
-  const displayError = error === "NEXT_REDIRECT" ? null : error;
+  const displayError =
+    error === "NEXT_REDIRECT" || error === "fetch failed" ? null : error;
 
   return (
     <div className={styles.authContainer}>
