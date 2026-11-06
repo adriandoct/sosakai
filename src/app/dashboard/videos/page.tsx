@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import styles from "../dojo-modules.module.css";
 import { useUser } from "../UserContext";
+import defaultVideos from "@/data/videos.json";
 
 type VideoCategory =
   | "Katas Básicos"
@@ -41,35 +42,47 @@ interface DojoVideo {
 
 const DEMO_VIDEO_IDS = new Set(["V-01", "V-02", "V-03", "V-04", "V-05"]);
 
-// Load persisted videos from local storage, strictly keeping all user videos
+// Load persisted videos from local/session storage, merged with official master list
 function loadPersistedVideos(): DojoVideo[] {
-  if (typeof window === "undefined") return [];
+  if (typeof window === "undefined") return defaultVideos as DojoVideo[];
   try {
     const raw =
       localStorage.getItem("sosakai_videos_library") ||
-      localStorage.getItem("sosakai_videos_library_backup");
+      localStorage.getItem("sosakai_videos_library_backup") ||
+      sessionStorage.getItem("sosakai_videos_library");
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        // Only strip the old initial hardcoded demo IDs (V-01..V-05).
-        // NEVER filter or delete by title - all user videos are permanently preserved!
-        return parsed.filter((v: DojoVideo) => v && v.id && !DEMO_VIDEO_IDS.has(v.id));
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const map = new Map<string, DojoVideo>();
+        // Default official videos first
+        (defaultVideos as DojoVideo[]).forEach((v) => map.set(v.id, v));
+        // User/admin persisted videos (keeping all uploaded videos)
+        parsed.forEach((v: DojoVideo) => {
+          if (v && v.id && !DEMO_VIDEO_IDS.has(v.id)) {
+            map.set(v.id, v);
+          }
+        });
+        return Array.from(map.values());
       }
     }
   } catch {}
-  return [];
+  return defaultVideos as DojoVideo[];
 }
 
 function savePersistedVideos(list: DojoVideo[]) {
   if (typeof window === "undefined") return;
   try {
-    const json = JSON.stringify(list);
-    localStorage.setItem("sosakai_videos_library", json);
-    localStorage.setItem("sosakai_videos_library_backup", json);
+    // Only save when list is not empty so we never overwrite with []
+    if (list && list.length > 0) {
+      const json = JSON.stringify(list);
+      localStorage.setItem("sosakai_videos_library", json);
+      localStorage.setItem("sosakai_videos_library_backup", json);
+      sessionStorage.setItem("sosakai_videos_library", json);
+    }
   } catch {}
 }
 
-const INITIAL_VIDEOS: DojoVideo[] = [];
+const INITIAL_VIDEOS: DojoVideo[] = defaultVideos as DojoVideo[];
 
 // Helper to convert YouTube/Vimeo URLs to embeddable URLs and extract thumbnails
 function parseVideoInput(url: string) {
@@ -139,11 +152,32 @@ export default function VideosPage() {
     description: "",
   });
 
-  // Load persisted videos from storage on mount
+  // Load persisted videos from storage and sync with server API
   useEffect(() => {
     const loaded = loadPersistedVideos();
     setVideos(loaded);
     savePersistedVideos(loaded);
+
+    // Sync with server API so all videos are permanent across devices & refreshes
+    fetch("/api/videos")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((serverData) => {
+        if (Array.isArray(serverData) && serverData.length > 0) {
+          setVideos((current) => {
+            const map = new Map<string, DojoVideo>();
+            current.forEach((v) => map.set(v.id, v));
+            serverData.forEach((v: DojoVideo) => {
+              if (v && v.id && !DEMO_VIDEO_IDS.has(v.id)) {
+                map.set(v.id, v);
+              }
+            });
+            const merged = Array.from(map.values());
+            savePersistedVideos(merged);
+            return merged;
+          });
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const handleAddVideo = (e: React.FormEvent) => {
@@ -180,6 +214,13 @@ export default function VideosPage() {
       return updated;
     });
 
+    // Guardar permanentemente en el servidor
+    fetch("/api/videos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newVideo),
+    }).catch(() => {});
+
     // Reset Form & show notification
     setFormData({
       title: "",
@@ -212,6 +253,16 @@ export default function VideosPage() {
       return updated;
     });
 
+    // Actualizar en el servidor
+    fetch("/api/videos", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: editingInstructorVideo.id,
+        instructor: newInstructor,
+      }),
+    }).catch(() => {});
+
     const title = editingInstructorVideo.title;
     setEditingInstructorVideo(null);
 
@@ -241,6 +292,13 @@ export default function VideosPage() {
       savePersistedVideos(updated);
       return updated;
     });
+
+    // Eliminar en el servidor
+    fetch("/api/videos", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: videoToDelete.id }),
+    }).catch(() => {});
 
     const deletedTitle = videoToDelete.title;
     setVideoToDelete(null);

@@ -1,0 +1,36 @@
+[
+  {
+    "id": "V-REIHO-01",
+    "title": "1 GREETING CEREMONY REIHO 礼法",
+    "category": "Katas Básicos",
+    "duration": "10:00",
+    "level": "Todos",
+    "instructor": "Sensei Adrian Silva",
+    "description": "Video instructivo oficial del Dojo Shito-Ryu Sosa-Kai. Protocolo de saludo ceremonial (Reiho), etiqueta y respeto tradicional.",
+    "videoUrl": "https://www.youtube-nocookie.com/embed/n4fCq7QdDks?autoplay=1",
+    "thumbnail": "https://img.youtube.com/vi/n4fCq7QdDks/hqdefault.jpg"
+  },
+  {
+    "id": "V-PINAN-01",
+    "title": "Pinan Nidan (Heian Shodan) - Shito-Ryu",
+    "category": "Katas Básicos",
+    "duration": "08:30",
+    "level": "Principiante",
+    "instructor": "Sensei Adrian Silva",
+    "description": "Forma básica fundamental de Shito-Ryu: posturas Zenkutsu-dachi, defensas Age-uke y ataques Oi-tsuki.",
+    "videoUrl": "https://www.youtube-nocookie.com/embed/v3H-wJ54m30?autoplay=1",
+    "thumbnail": "https://img.youtube.com/vi/v3H-wJ54m30/hqdefault.jpg"
+  },
+  {
+    "id": "V-BASSAI-01",
+    "title": "Kata Bassai Dai - Tradicional Shito-Ryu",
+    "category": "Katas Avanzados",
+    "duration": "12:15",
+    "level": "Avanzado",
+    "instructor": "Sensei Adrian Silva",
+    "description": "Kata tradicional para grados intermedios y avanzados. Penetración de fortalezas, cambios de ritmo y potencia marcial.",
+    "videoUrl": "https://www.youtube-nocookie.com/embed/5U2u82U10o4?autoplay=1",
+    "thumbnail": "https://img.youtube.com/vi/5U2u82U10o4/hqdefault.jpg"
+  }
+]
+
