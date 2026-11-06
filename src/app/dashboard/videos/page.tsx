@@ -40,11 +40,20 @@ interface DojoVideo {
   thumbnail: string;
 }
 
-const DEMO_VIDEO_IDS = new Set(["V-01", "V-02", "V-03", "V-04", "V-05"]);
+const DEMO_VIDEO_IDS = new Set([
+  "V-01",
+  "V-02",
+  "V-03",
+  "V-04",
+  "V-05",
+  "V-REIHO-01",
+  "V-PINAN-01",
+  "V-BASSAI-01",
+]);
 
-// Load persisted videos from local/session storage, merged with official master list
+// Load persisted videos from local/session storage
 function loadPersistedVideos(): DojoVideo[] {
-  if (typeof window === "undefined") return defaultVideos as DojoVideo[];
+  if (typeof window === "undefined") return [];
   try {
     const raw =
       localStorage.getItem("sosakai_videos_library") ||
@@ -52,45 +61,37 @@ function loadPersistedVideos(): DojoVideo[] {
       sessionStorage.getItem("sosakai_videos_library");
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        const map = new Map<string, DojoVideo>();
-        // Default official videos first
-        (defaultVideos as DojoVideo[]).forEach((v) => map.set(v.id, v));
-        // User/admin persisted videos (keeping all uploaded videos)
-        parsed.forEach((v: DojoVideo) => {
-          if (v && v.id && !DEMO_VIDEO_IDS.has(v.id)) {
-            map.set(v.id, v);
-          }
-        });
-        return Array.from(map.values());
+      if (Array.isArray(parsed)) {
+        const cleaned = parsed.filter(
+          (v: DojoVideo) => v && v.id && !DEMO_VIDEO_IDS.has(v.id)
+        );
+        return cleaned;
       }
     }
   } catch {}
-  return defaultVideos as DojoVideo[];
+  return [];
 }
 
 function savePersistedVideos(list: DojoVideo[]) {
   if (typeof window === "undefined") return;
   try {
-    // Only save when list is not empty so we never overwrite with []
-    if (list && list.length > 0) {
-      const json = JSON.stringify(list);
-      localStorage.setItem("sosakai_videos_library", json);
-      localStorage.setItem("sosakai_videos_library_backup", json);
-      sessionStorage.setItem("sosakai_videos_library", json);
-    }
+    const cleaned = list.filter((v) => v && v.id && !DEMO_VIDEO_IDS.has(v.id));
+    const json = JSON.stringify(cleaned);
+    localStorage.setItem("sosakai_videos_library", json);
+    localStorage.setItem("sosakai_videos_library_backup", json);
+    sessionStorage.setItem("sosakai_videos_library", json);
   } catch {}
 }
 
-const INITIAL_VIDEOS: DojoVideo[] = defaultVideos as DojoVideo[];
+const INITIAL_VIDEOS: DojoVideo[] = [];
 
 // Helper to convert YouTube/Vimeo URLs to embeddable URLs and extract thumbnails
 function parseVideoInput(url: string) {
   const trimmed = url.trim();
 
-  // YouTube matchers (standard, short, embed, shorts)
+  // YouTube matchers (standard, short, embed, shorts, live, mobile)
   const ytMatch = trimmed.match(
-    /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/|youtube\.com\/shorts\/)([^"&?\/\s]{11})/
+    /(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|shorts\/|live\/|watch\?v=|watch\?.+&v=))([\w-]{11})/
   );
 
   if (ytMatch && ytMatch[1]) {
@@ -102,7 +103,7 @@ function parseVideoInput(url: string) {
   }
 
   // Vimeo matcher
-  const vimeoMatch = trimmed.match(/(?:vimeo\.com\/)(\d+)/);
+  const vimeoMatch = trimmed.match(/vimeo\.com\/(?:video\/)?(\d+)/);
   if (vimeoMatch && vimeoMatch[1]) {
     return {
       embedUrl: `https://player.vimeo.com/video/${vimeoMatch[1]}?autoplay=1`,
@@ -110,9 +111,9 @@ function parseVideoInput(url: string) {
     };
   }
 
-  // Direct embed or default fallback
+  // Direct embed or direct link
   return {
-    embedUrl: trimmed.includes("embed") ? trimmed : `https://www.youtube-nocookie.com/embed/n4fCq7QdDks?autoplay=1`,
+    embedUrl: trimmed,
     thumbnail: "/karate-action.jpg",
   };
 }
@@ -158,19 +159,18 @@ export default function VideosPage() {
     setVideos(loaded);
     savePersistedVideos(loaded);
 
-    // Sync with server API so all videos are permanent across devices & refreshes
+    // Sync with server API so all real videos are permanent across devices & refreshes
     fetch("/api/videos")
       .then((res) => (res.ok ? res.json() : null))
       .then((serverData) => {
-        if (Array.isArray(serverData) && serverData.length > 0) {
+        if (Array.isArray(serverData)) {
+          const validServer = serverData.filter(
+            (v: DojoVideo) => v && v.id && !DEMO_VIDEO_IDS.has(v.id)
+          );
           setVideos((current) => {
             const map = new Map<string, DojoVideo>();
-            current.forEach((v) => map.set(v.id, v));
-            serverData.forEach((v: DojoVideo) => {
-              if (v && v.id && !DEMO_VIDEO_IDS.has(v.id)) {
-                map.set(v.id, v);
-              }
-            });
+            current.filter((v) => !DEMO_VIDEO_IDS.has(v.id)).forEach((v) => map.set(v.id, v));
+            validServer.forEach((v: DojoVideo) => map.set(v.id, v));
             const merged = Array.from(map.values());
             savePersistedVideos(merged);
             return merged;

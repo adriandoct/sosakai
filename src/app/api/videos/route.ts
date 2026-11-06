@@ -4,7 +4,18 @@ import path from "path";
 import defaultVideos from "@/data/videos.json";
 
 // In-memory runtime cache for serverless environments
-let serverVideosCache = [...defaultVideos];
+let serverVideosCache: unknown[] = [];
+
+const DEMO_VIDEO_IDS = new Set([
+  "V-01",
+  "V-02",
+  "V-03",
+  "V-04",
+  "V-05",
+  "V-REIHO-01",
+  "V-PINAN-01",
+  "V-BASSAI-01",
+]);
 
 function getFilePath() {
   return path.join(process.cwd(), "src", "data", "videos.json");
@@ -16,13 +27,18 @@ function readVideosFromFile() {
     if (fs.existsSync(filePath)) {
       const data = fs.readFileSync(filePath, "utf-8");
       const parsed = JSON.parse(data);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        serverVideosCache = parsed;
-        return parsed;
+      if (Array.isArray(parsed)) {
+        const clean = parsed.filter(
+          (v: { id?: string }) => v && v.id && !DEMO_VIDEO_IDS.has(v.id)
+        );
+        serverVideosCache = clean;
+        return clean;
       }
     }
   } catch {}
-  return serverVideosCache;
+  return (serverVideosCache as { id?: string }[]).filter(
+    (v) => v && v.id && !DEMO_VIDEO_IDS.has(v.id)
+  );
 }
 
 function saveVideosToFile(videos: unknown[]) {
