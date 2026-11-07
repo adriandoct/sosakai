@@ -350,7 +350,30 @@ export default function VideosPage() {
 
         {/* Add video button: ONLY visible for Super Admin and Admin */}
         {isAdmin && (
-          <div className={styles.topActions}>
+          <div className={styles.topActions} style={{ display: "flex", gap: "0.6rem" }}>
+            {videos.length > 0 && (
+              <button
+                type="button"
+                className={styles.btnSecondary}
+                style={{ fontSize: "0.85rem", padding: "0.55rem 0.9rem" }}
+                onClick={() => {
+                  const text = videos
+                    .map((v) => `• ${v.title} (${v.instructor || "Sin instructor"}): ${v.videoUrl}`)
+                    .join("\n");
+                  if (navigator.clipboard) {
+                    navigator.clipboard.writeText(text);
+                    setNotification({
+                      type: "success",
+                      text: "¡Enlaces copiados! Pégalos en el chat para dejarlos grabados en el servidor para tu celular.",
+                    });
+                    setTimeout(() => setNotification(null), 6000);
+                  }
+                }}
+                title="Copiar los enlaces de tus videos para integrarlos en el servidor"
+              >
+                Copiar Enlaces
+              </button>
+            )}
             <button className={styles.btnPrimary} onClick={() => setIsAddOpen(true)}>
               <Plus size={18} />
               Agregar Video
