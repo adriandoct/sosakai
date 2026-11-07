@@ -15,6 +15,8 @@ const DEMO_VIDEO_IDS = new Set([
   "V-REIHO-01",
   "V-PINAN-01",
   "V-BASSAI-01",
+  "SR-PINAN-01",
+  "SR-BASSAI-01",
 ]);
 
 function getWritablePath() {

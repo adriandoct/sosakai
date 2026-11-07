@@ -49,27 +49,62 @@ const DEMO_VIDEO_IDS = new Set([
   "V-REIHO-01",
   "V-PINAN-01",
   "V-BASSAI-01",
+  "SR-PINAN-01",
+  "SR-BASSAI-01",
 ]);
 
-// Persistent set of IDs deleted by admin so they never resurrect
-function getDeletedVideoIds(): Set<string> {
+function isDemoOrBlacklisted(v?: { id?: string; title?: string } | null): boolean {
+  if (!v) return true;
+  if (v.id && DEMO_VIDEO_IDS.has(v.id)) return true;
+  if (v.title) {
+    const t = v.title.toLowerCase();
+    if (t.includes("pinan shodan") || t.includes("bassai dai")) return true;
+  }
+  return false;
+}
+
+// Persistent set of IDs and titles deleted by admin so they NEVER resurrect
+function getDeletedIdentifiers(): Set<string> {
   if (typeof window === "undefined") return new Set();
   try {
-    const raw = localStorage.getItem("sosakai_deleted_videos") || sessionStorage.getItem("sosakai_deleted_videos");
+    const raw =
+      localStorage.getItem("sosakai_deleted_videos") ||
+      sessionStorage.getItem("sosakai_deleted_videos");
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return new Set(parsed);
+      if (Array.isArray(parsed)) {
+        return new Set(parsed.map((s) => String(s).trim().toLowerCase()));
+      }
     }
   } catch {}
   return new Set();
 }
 
-function recordDeletedVideoId(id: string) {
+function isDeleted(id?: string, title?: string): boolean {
+  const set = getDeletedIdentifiers();
+  if (id && set.has(id.trim().toLowerCase())) return true;
+  if (title && set.has(title.trim().toLowerCase())) return true;
+  return false;
+}
+
+function recordDeletedVideo(id: string, title?: string) {
   if (typeof window === "undefined") return;
   try {
-    const set = getDeletedVideoIds();
-    set.add(id);
-    const json = JSON.stringify(Array.from(set));
+    const raw =
+      localStorage.getItem("sosakai_deleted_videos") ||
+      sessionStorage.getItem("sosakai_deleted_videos");
+    const arr: string[] = raw ? JSON.parse(raw) : [];
+    const normalizedId = id.trim().toLowerCase();
+    if (!arr.map((s) => s.toLowerCase()).includes(normalizedId)) {
+      arr.push(id.trim());
+    }
+    if (title) {
+      const normalizedTitle = title.trim().toLowerCase();
+      if (!arr.map((s) => s.toLowerCase()).includes(normalizedTitle)) {
+        arr.push(title.trim());
+      }
+    }
+    const json = JSON.stringify(arr);
     localStorage.setItem("sosakai_deleted_videos", json);
     sessionStorage.setItem("sosakai_deleted_videos", json);
   } catch {}
@@ -77,28 +112,27 @@ function recordDeletedVideoId(id: string) {
 
 // Load persisted videos from local/session storage, merged with official master list
 function loadPersistedVideos(): DojoVideo[] {
-  if (typeof window === "undefined") return defaultVideos as DojoVideo[];
+  if (typeof window === "undefined") return (defaultVideos as DojoVideo[]).filter((v) => !isDemoOrBlacklisted(v));
   try {
-    const deleted = getDeletedVideoIds();
     const raw =
       localStorage.getItem("sosakai_videos_library") ||
       sessionStorage.getItem("sosakai_videos_library");
 
     const map = new Map<string, DojoVideo>();
 
-    // 1. Official default videos (unless explicitly deleted)
+    // 1. Official default videos (unless deleted or demo)
     (defaultVideos as DojoVideo[]).forEach((v) => {
-      if (v && v.id && !DEMO_VIDEO_IDS.has(v.id) && !deleted.has(v.id)) {
+      if (v && v.id && !isDemoOrBlacklisted(v) && !isDeleted(v.id, v.title)) {
         map.set(v.id, v);
       }
     });
 
-    // 2. User/admin uploaded videos (unless deleted)
+    // 2. User/admin uploaded videos (unless deleted or demo)
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
         parsed.forEach((v: DojoVideo) => {
-          if (v && v.id && !DEMO_VIDEO_IDS.has(v.id) && !deleted.has(v.id)) {
+          if (v && v.id && !isDemoOrBlacklisted(v) && !isDeleted(v.id, v.title)) {
             map.set(v.id, v);
           }
         });
@@ -107,14 +141,13 @@ function loadPersistedVideos(): DojoVideo[] {
 
     return Array.from(map.values());
   } catch {}
-  return defaultVideos as DojoVideo[];
+  return (defaultVideos as DojoVideo[]).filter((v) => !isDemoOrBlacklisted(v));
 }
 
 function savePersistedVideos(list: DojoVideo[]) {
   if (typeof window === "undefined") return;
   try {
-    const deleted = getDeletedVideoIds();
-    const cleaned = list.filter((v) => v && v.id && !DEMO_VIDEO_IDS.has(v.id) && !deleted.has(v.id));
+    const cleaned = list.filter((v) => v && v.id && !isDemoOrBlacklisted(v) && !isDeleted(v.id, v.title));
     const json = JSON.stringify(cleaned);
     localStorage.setItem("sosakai_videos_library", json);
     localStorage.setItem("sosakai_videos_library_backup", json);
@@ -160,11 +193,14 @@ function parseVideoInput(url: string) {
 export default function VideosPage() {
   const { isAdmin, isSuperAdmin, role } = useUser();
 
-  const [videos, setVideos] = useState<DojoVideo[]>(INITIAL_VIDEOS);
+  const [videos, setVideos] = useState<DojoVideo[]>(() =>
+    (defaultVideos as DojoVideo[]).filter((v) => !isDemoOrBlacklisted(v))
+  );
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Todas");
   const [activeVideo, setActiveVideo] = useState<DojoVideo | null>(null);
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [showLinksModal, setShowLinksModal] = useState(false);
   const [videoToDelete, setVideoToDelete] = useState<DojoVideo | null>(null);
   const [editingInstructorVideo, setEditingInstructorVideo] = useState<{
     id: string;
@@ -203,17 +239,29 @@ export default function VideosPage() {
       .then((res) => (res.ok ? res.json() : null))
       .then((serverData) => {
         if (Array.isArray(serverData)) {
-          const deleted = getDeletedVideoIds();
           const validServer = serverData.filter(
-            (v: DojoVideo) => v && v.id && !DEMO_VIDEO_IDS.has(v.id) && !deleted.has(v.id)
+            (v: DojoVideo) => v && v.id && !isDemoOrBlacklisted(v) && !isDeleted(v.id, v.title)
           );
           if (validServer.length > 0) {
             setVideos((current) => {
               const map = new Map<string, DojoVideo>();
               current
-                .filter((v) => !DEMO_VIDEO_IDS.has(v.id) && !deleted.has(v.id))
+                .filter((v) => !isDemoOrBlacklisted(v) && !isDeleted(v.id, v.title))
                 .forEach((v) => map.set(v.id, v));
-              validServer.forEach((v: DojoVideo) => map.set(v.id, v));
+              validServer.forEach((v: DojoVideo) => {
+                if (!map.has(v.id)) {
+                  map.set(v.id, v);
+                } else {
+                  const existing = map.get(v.id)!;
+                  if (!existing.videoUrl && v.videoUrl) {
+                    map.set(v.id, {
+                      ...existing,
+                      videoUrl: v.videoUrl,
+                      thumbnail: v.thumbnail || existing.thumbnail,
+                    });
+                  }
+                }
+              });
               const merged = Array.from(map.values());
               savePersistedVideos(merged);
               return merged;
@@ -331,11 +379,13 @@ export default function VideosPage() {
       return;
     }
 
-    // Registrar ID eliminado para que nunca vuelva a resucitar
-    recordDeletedVideoId(videoToDelete.id);
+    // Registrar ID y título eliminados para que nunca vuelvan a resucitar
+    recordDeletedVideo(videoToDelete.id, videoToDelete.title);
 
     setVideos((prev) => {
-      const updated = prev.filter((v) => v.id !== videoToDelete.id);
+      const updated = prev.filter(
+        (v) => v.id !== videoToDelete.id && v.title !== videoToDelete.title
+      );
       savePersistedVideos(updated);
       return updated;
     });
@@ -395,18 +445,14 @@ export default function VideosPage() {
                 style={{ fontSize: "0.85rem", padding: "0.55rem 0.9rem" }}
                 onClick={() => {
                   const text = videos
-                    .map((v) => `• ${v.title} (${v.instructor || "Sin instructor"}): ${v.videoUrl}`)
+                    .map((v) => `• ${v.title} (${v.instructor || "Hanshi Jorge Jr."}): ${v.videoUrl}`)
                     .join("\n");
                   if (navigator.clipboard) {
                     navigator.clipboard.writeText(text);
-                    setNotification({
-                      type: "success",
-                      text: "¡Enlaces copiados! Pégalos en el chat para dejarlos grabados en el servidor para tu celular.",
-                    });
-                    setTimeout(() => setNotification(null), 6000);
                   }
+                  setShowLinksModal(true);
                 }}
-                title="Copiar los enlaces de tus videos para integrarlos en el servidor"
+                title="Ver y copiar los enlaces de tus videos para guardarlos en el servidor"
               >
                 Copiar Enlaces
               </button>
@@ -702,15 +748,25 @@ export default function VideosPage() {
               </button>
             </div>
 
-            <div style={{ position: "relative", width: "100%", paddingBottom: "56.25%", background: "#000" }}>
-              <iframe
-                src={activeVideo.videoUrl}
-                title={activeVideo.title}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: "none" }}
-              ></iframe>
-            </div>
+            {activeVideo.videoUrl ? (
+              <div style={{ position: "relative", width: "100%", paddingBottom: "56.25%", background: "#000" }}>
+                <iframe
+                  src={activeVideo.videoUrl}
+                  title={activeVideo.title}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: "none" }}
+                ></iframe>
+              </div>
+            ) : (
+              <div style={{ padding: "3rem 1.5rem", textAlign: "center", background: "#0a0c10" }}>
+                <Video size={48} color="#e60026" style={{ margin: "0 auto 1rem" }} />
+                <h3 style={{ color: "#f8fafc", marginBottom: "0.5rem" }}>Enlace de video en sincronización</h3>
+                <p style={{ color: "#94a3b8", fontSize: "0.9rem" }}>
+                  Este video está registrado en la videoteca oficial. Si tienes el enlace de YouTube en tu computadora, haz clic en "Copiar Enlaces" y pégalo en el chat para integrarlo.
+                </p>
+              </div>
+            )}
 
             <div className={styles.modalBody}>
               <p style={{ color: "#cbd5e1", fontSize: "0.95rem", lineHeight: 1.6 }}>
@@ -959,6 +1015,78 @@ export default function VideosPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* View & Copy Video Links Modal */}
+      {showLinksModal && (
+        <div className={styles.modalOverlay} onClick={() => setShowLinksModal(false)}>
+          <div className={styles.modalBox} style={{ maxWidth: "560px" }} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2>Enlaces de tus Videos ({videos.length})</h2>
+              <button className={styles.modalClose} onClick={() => setShowLinksModal(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className={styles.modalBody}>
+              <p style={{ color: "#cbd5e1", fontSize: "0.9rem", lineHeight: 1.5 }}>
+                Estos son los videos y enlaces activos en tu videoteca. Cópialos y pégalos en el chat para integrarlos directamente en el servidor de Vercel y que se vean en cualquier celular.
+              </p>
+              <div
+                style={{
+                  background: "#0a0c10",
+                  padding: "1rem",
+                  borderRadius: "10px",
+                  marginTop: "0.75rem",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  maxHeight: "220px",
+                  overflowY: "auto",
+                }}
+              >
+                {videos.map((v) => (
+                  <div key={v.id} style={{ marginBottom: "0.75rem", fontSize: "0.85rem", color: "#f8fafc" }}>
+                    <div>
+                      <strong style={{ color: "#e60026" }}>{v.title}</strong>
+                      <span style={{ color: "#94a3b8", fontSize: "0.8rem", marginLeft: "0.4rem" }}>
+                        ({v.instructor || "Hanshi Jorge Jr."})
+                      </span>
+                    </div>
+                    <div style={{ color: "#38bdf8", wordBreak: "break-all", fontSize: "0.78rem", marginTop: "0.2rem" }}>
+                      {v.videoUrl || "(Sin URL de video)"}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className={styles.modalFooter}>
+              <button
+                type="button"
+                className={styles.btnSecondary}
+                onClick={() => setShowLinksModal(false)}
+              >
+                Cerrar
+              </button>
+              <button
+                type="button"
+                className={styles.btnPrimary}
+                onClick={() => {
+                  const text = videos
+                    .map((v) => `• ${v.title} (${v.instructor || "Hanshi Jorge Jr."}): ${v.videoUrl}`)
+                    .join("\n");
+                  if (navigator.clipboard) {
+                    navigator.clipboard.writeText(text);
+                    setNotification({
+                      type: "success",
+                      text: "¡Enlaces copiados! Ahora pégalos en el chat para dejarlos grabados en el servidor.",
+                    });
+                    setTimeout(() => setNotification(null), 6000);
+                  }
+                  setShowLinksModal(false);
+                }}
+              >
+                Copiar Todo al Portapapeles
+              </button>
+            </div>
           </div>
         </div>
       )}
