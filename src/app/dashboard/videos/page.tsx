@@ -51,29 +51,61 @@ const DEMO_VIDEO_IDS = new Set([
   "V-BASSAI-01",
 ]);
 
+// Persistent set of IDs deleted by admin so they never resurrect
+function getDeletedVideoIds(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = localStorage.getItem("sosakai_deleted_videos") || sessionStorage.getItem("sosakai_deleted_videos");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return new Set(parsed);
+    }
+  } catch {}
+  return new Set();
+}
+
+function recordDeletedVideoId(id: string) {
+  if (typeof window === "undefined") return;
+  try {
+    const set = getDeletedVideoIds();
+    set.add(id);
+    const json = JSON.stringify(Array.from(set));
+    localStorage.setItem("sosakai_deleted_videos", json);
+    sessionStorage.setItem("sosakai_deleted_videos", json);
+  } catch {}
+}
+
 // Load persisted videos from local/session storage, merged with official master list
 function loadPersistedVideos(): DojoVideo[] {
   if (typeof window === "undefined") return defaultVideos as DojoVideo[];
   try {
+    const deleted = getDeletedVideoIds();
     const raw =
       localStorage.getItem("sosakai_videos_library") ||
-      localStorage.getItem("sosakai_videos_library_backup") ||
       sessionStorage.getItem("sosakai_videos_library");
+
+    const map = new Map<string, DojoVideo>();
+
+    // 1. Official default videos (unless explicitly deleted)
+    (defaultVideos as DojoVideo[]).forEach((v) => {
+      if (v && v.id && !DEMO_VIDEO_IDS.has(v.id) && !deleted.has(v.id)) {
+        map.set(v.id, v);
+      }
+    });
+
+    // 2. User/admin uploaded videos (unless deleted)
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        const map = new Map<string, DojoVideo>();
-        // Official verified default videos
-        (defaultVideos as DojoVideo[]).forEach((v) => map.set(v.id, v));
-        // User/admin uploaded videos
+      if (Array.isArray(parsed)) {
         parsed.forEach((v: DojoVideo) => {
-          if (v && v.id && !DEMO_VIDEO_IDS.has(v.id)) {
+          if (v && v.id && !DEMO_VIDEO_IDS.has(v.id) && !deleted.has(v.id)) {
             map.set(v.id, v);
           }
         });
-        return Array.from(map.values());
       }
     }
+
+    return Array.from(map.values());
   } catch {}
   return defaultVideos as DojoVideo[];
 }
@@ -81,13 +113,12 @@ function loadPersistedVideos(): DojoVideo[] {
 function savePersistedVideos(list: DojoVideo[]) {
   if (typeof window === "undefined") return;
   try {
-    const cleaned = list.filter((v) => v && v.id && !DEMO_VIDEO_IDS.has(v.id));
-    if (cleaned.length > 0) {
-      const json = JSON.stringify(cleaned);
-      localStorage.setItem("sosakai_videos_library", json);
-      localStorage.setItem("sosakai_videos_library_backup", json);
-      sessionStorage.setItem("sosakai_videos_library", json);
-    }
+    const deleted = getDeletedVideoIds();
+    const cleaned = list.filter((v) => v && v.id && !DEMO_VIDEO_IDS.has(v.id) && !deleted.has(v.id));
+    const json = JSON.stringify(cleaned);
+    localStorage.setItem("sosakai_videos_library", json);
+    localStorage.setItem("sosakai_videos_library_backup", json);
+    sessionStorage.setItem("sosakai_videos_library", json);
   } catch {}
 }
 
@@ -172,13 +203,16 @@ export default function VideosPage() {
       .then((res) => (res.ok ? res.json() : null))
       .then((serverData) => {
         if (Array.isArray(serverData)) {
+          const deleted = getDeletedVideoIds();
           const validServer = serverData.filter(
-            (v: DojoVideo) => v && v.id && !DEMO_VIDEO_IDS.has(v.id)
+            (v: DojoVideo) => v && v.id && !DEMO_VIDEO_IDS.has(v.id) && !deleted.has(v.id)
           );
           if (validServer.length > 0) {
             setVideos((current) => {
               const map = new Map<string, DojoVideo>();
-              current.filter((v) => !DEMO_VIDEO_IDS.has(v.id)).forEach((v) => map.set(v.id, v));
+              current
+                .filter((v) => !DEMO_VIDEO_IDS.has(v.id) && !deleted.has(v.id))
+                .forEach((v) => map.set(v.id, v));
               validServer.forEach((v: DojoVideo) => map.set(v.id, v));
               const merged = Array.from(map.values());
               savePersistedVideos(merged);
@@ -297,6 +331,9 @@ export default function VideosPage() {
       return;
     }
 
+    // Registrar ID eliminado para que nunca vuelva a resucitar
+    recordDeletedVideoId(videoToDelete.id);
+
     setVideos((prev) => {
       const updated = prev.filter((v) => v.id !== videoToDelete.id);
       savePersistedVideos(updated);
@@ -315,7 +352,7 @@ export default function VideosPage() {
 
     setNotification({
       type: "success",
-      text: `El video "${deletedTitle}" ha sido eliminado de la videoteca.`,
+      text: `El video "${deletedTitle}" ha sido eliminado exitosamente.`,
     });
     setTimeout(() => setNotification(null), 4000);
   };
