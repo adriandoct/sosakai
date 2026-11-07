@@ -133,7 +133,21 @@ function loadPersistedVideos(): DojoVideo[] {
       if (Array.isArray(parsed)) {
         parsed.forEach((v: DojoVideo) => {
           if (v && v.id && !isDemoOrBlacklisted(v) && !isDeleted(v.id, v.title)) {
-            map.set(v.id, v);
+            // If it's one of the official videos, ensure it uses the real YouTube URL and thumbnail
+            const official = (defaultVideos as DojoVideo[]).find(
+              (def) => def.id === v.id || def.title.trim().toLowerCase() === v.title.trim().toLowerCase()
+            );
+            if (
+              official &&
+              (!v.videoUrl ||
+                v.videoUrl.includes("51VZdzaDPro") ||
+                v.thumbnail?.includes("karate-action") ||
+                v.thumbnail?.includes("51VZdzaDPro"))
+            ) {
+              map.set(official.id, official);
+            } else {
+              map.set(v.id, v);
+            }
           }
         });
       }
@@ -253,7 +267,12 @@ export default function VideosPage() {
                   map.set(v.id, v);
                 } else {
                   const existing = map.get(v.id)!;
-                  if (!existing.videoUrl && v.videoUrl) {
+                  if (
+                    !existing.videoUrl ||
+                    existing.videoUrl.includes("51VZdzaDPro") ||
+                    existing.thumbnail?.includes("karate-action") ||
+                    existing.thumbnail?.includes("51VZdzaDPro")
+                  ) {
                     map.set(v.id, {
                       ...existing,
                       videoUrl: v.videoUrl,

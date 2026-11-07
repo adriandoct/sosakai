@@ -7,8 +7,8 @@
     "level": "Todos",
     "instructor": "Hanshi Jorge Jr.",
     "description": "Video instructivo oficial del Dojo Shito-Ryu Sosa-Kai.",
-    "videoUrl": "https://www.youtube-nocookie.com/embed/51VZdzaDPro?autoplay=1",
-    "thumbnail": "https://img.youtube.com/vi/51VZdzaDPro/hqdefault.jpg"
+    "videoUrl": "https://www.youtube-nocookie.com/embed/qfvwey3AdmA?autoplay=1",
+    "thumbnail": "https://img.youtube.com/vi/qfvwey3AdmA/hqdefault.jpg"
   },
   {
     "id": "SR-JUNBI-01",
@@ -18,8 +18,8 @@
     "level": "Todos",
     "instructor": "Hanshi Jorge Jr.",
     "description": "Video instructivo oficial del Dojo Shito-Ryu Sosa-Kai.",
-    "videoUrl": "",
-    "thumbnail": "/karate-action.jpg"
+    "videoUrl": "https://www.youtube-nocookie.com/embed/oWixk1aW_0k?autoplay=1",
+    "thumbnail": "https://img.youtube.com/vi/oWixk1aW_0k/hqdefault.jpg"
   },
   {
     "id": "SR-JUNBI-02",
@@ -29,7 +29,7 @@
     "level": "Todos",
     "instructor": "Hanshi Jorge Jr.",
     "description": "Video instructivo oficial del Dojo Shito-Ryu Sosa-Kai.",
-    "videoUrl": "",
-    "thumbnail": "/karate-action.jpg"
+    "videoUrl": "https://www.youtube-nocookie.com/embed/6ppuEOzWkm8?autoplay=1",
+    "thumbnail": "https://img.youtube.com/vi/6ppuEOzWkm8/hqdefault.jpg"
   }
 ]

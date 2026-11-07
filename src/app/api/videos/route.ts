@@ -31,43 +31,33 @@ function getFallbackPath() {
 }
 
 function readVideosFromFile() {
+  const defaults = (defaultVideos as { id: string; title: string; videoUrl: string; thumbnail: string }[]).filter(
+    (v) => v && v.id && !DEMO_VIDEO_IDS.has(v.id)
+  );
+
   try {
     const writablePath = getWritablePath();
     if (fs.existsSync(writablePath)) {
       const data = fs.readFileSync(writablePath, "utf-8");
       const parsed = JSON.parse(data);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        const clean = parsed.filter(
-          (v: { id?: string }) => v && v.id && !DEMO_VIDEO_IDS.has(v.id)
-        );
+        const clean = parsed
+          .filter((v: { id?: string; title?: string }) => v && v.id && !DEMO_VIDEO_IDS.has(v.id))
+          .map((v: { id: string; title: string; videoUrl: string; thumbnail: string }) => {
+            const def = defaults.find((d) => d.id === v.id || d.title.trim().toLowerCase() === v.title.trim().toLowerCase());
+            if (def && (!v.videoUrl || v.videoUrl.includes("51VZdzaDPro") || v.thumbnail?.includes("karate-action"))) {
+              return def;
+            }
+            return v;
+          });
         serverVideosCache = clean;
         return clean;
       }
     }
   } catch {}
 
-  try {
-    const fallbackPath = getFallbackPath();
-    if (fs.existsSync(fallbackPath)) {
-      const data = fs.readFileSync(fallbackPath, "utf-8");
-      const parsed = JSON.parse(data);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        const clean = parsed.filter(
-          (v: { id?: string }) => v && v.id && !DEMO_VIDEO_IDS.has(v.id)
-        );
-        serverVideosCache = clean;
-        return clean;
-      }
-    }
-  } catch {}
-
-  const defaults = (defaultVideos as { id?: string }[]).filter(
-    (v) => v && v.id && !DEMO_VIDEO_IDS.has(v.id)
-  );
-  if (serverVideosCache.length === 0) {
-    serverVideosCache = defaults;
-  }
-  return serverVideosCache;
+  serverVideosCache = defaults;
+  return defaults;
 }
 
 function saveVideosToFile(videos: unknown[]) {
