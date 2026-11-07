@@ -59,9 +59,13 @@ function readVideosFromFile() {
     }
   } catch {}
 
-  return (serverVideosCache as { id?: string }[]).filter(
+  const defaults = (defaultVideos as { id?: string }[]).filter(
     (v) => v && v.id && !DEMO_VIDEO_IDS.has(v.id)
   );
+  if (serverVideosCache.length === 0) {
+    serverVideosCache = defaults;
+  }
+  return serverVideosCache;
 }
 
 function saveVideosToFile(videos: unknown[]) {

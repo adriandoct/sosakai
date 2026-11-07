@@ -1,1 +1,35 @@
-[]
+[
+  {
+    "id": "SR-REIHO-01",
+    "title": "1 GREETING CEREMONY REIHO 礼法",
+    "category": "Katas Básicos",
+    "duration": "08:45",
+    "level": "Todos",
+    "instructor": "Sensei Adrian Silva",
+    "description": "Video instructivo oficial del Dojo Shito-Ryu Sosa-Kai. Ceremonia de saludo tradicional Reiho, etiqueta y respeto marcial.",
+    "videoUrl": "https://www.youtube-nocookie.com/embed/51VZdzaDPro?autoplay=1",
+    "thumbnail": "https://img.youtube.com/vi/51VZdzaDPro/hqdefault.jpg"
+  },
+  {
+    "id": "SR-PINAN-01",
+    "title": "Kata Pinan Shodan (Heian Nidan) - Shito-Ryu",
+    "category": "Katas Básicos",
+    "duration": "06:20",
+    "level": "Principiante",
+    "instructor": "Sensei Adrian Silva",
+    "description": "Ejecución técnica y desplazamientos fundamentales de Shito-Ryu: posturas Zenkutsu-dachi y defensas Shuto-uke.",
+    "videoUrl": "https://www.youtube-nocookie.com/embed/yB80ikrLglk?autoplay=1",
+    "thumbnail": "https://img.youtube.com/vi/yB80ikrLglk/hqdefault.jpg"
+  },
+  {
+    "id": "SR-BASSAI-01",
+    "title": "Kata Bassai Dai - Tradicional Shito-Ryu",
+    "category": "Katas Avanzados",
+    "duration": "11:15",
+    "level": "Avanzado",
+    "instructor": "Sensei Adrian Silva",
+    "description": "Kata tradicional avanzado de Shito-Ryu: rompimiento de fortaleza, kime y aplicaciones técnicas marciales.",
+    "videoUrl": "https://www.youtube-nocookie.com/embed/ETN6pEb5ANs?autoplay=1",
+    "thumbnail": "https://img.youtube.com/vi/ETN6pEb5ANs/hqdefault.jpg"
+  }
+]
