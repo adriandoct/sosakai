@@ -14,6 +14,10 @@ import {
   AlertTriangle,
   ShieldAlert,
   Edit3,
+  Smartphone,
+  Share2,
+  Copy,
+  QrCode,
 } from "lucide-react";
 import styles from "../dojo-modules.module.css";
 import { useUser } from "../UserContext";
@@ -50,6 +54,54 @@ const DEMO_VIDEO_IDS = new Set([
   "V-PINAN-01",
   "V-BASSAI-01",
 ]);
+
+// Helper to export videos to compact URL payload for QR code & mobile sync
+function exportVideosPayload(videos: DojoVideo[]): string {
+  try {
+    const compact = videos
+      .filter((v) => v && v.id && !DEMO_VIDEO_IDS.has(v.id))
+      .map((v) => ({
+        i: v.id,
+        t: v.title,
+        c: v.category,
+        d: v.duration,
+        l: v.level,
+        n: v.instructor,
+        e: v.description,
+        u: v.videoUrl,
+        m: v.thumbnail,
+      }));
+    const json = JSON.stringify(compact);
+    if (typeof window !== "undefined") {
+      return btoa(unescape(encodeURIComponent(json)));
+    }
+  } catch {}
+  return "";
+}
+
+// Helper to import videos from compact URL payload
+function importVideosPayload(payload: string): DojoVideo[] {
+  try {
+    const json = decodeURIComponent(escape(atob(payload)));
+    const parsed = JSON.parse(json);
+    if (Array.isArray(parsed)) {
+      return parsed
+        .map((item: any) => ({
+          id: item.i || item.id || `V-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+          title: item.t || item.title || "",
+          category: (item.c || item.category || "Katas Básicos") as VideoCategory,
+          duration: item.d || item.duration || "10:00",
+          level: (item.l || item.level || "Todos") as VideoLevel,
+          instructor: item.n || item.instructor || "",
+          description: item.e || item.description || "",
+          videoUrl: item.u || item.videoUrl || "",
+          thumbnail: item.m || item.thumbnail || "/karate-action.jpg",
+        }))
+        .filter((v: DojoVideo) => v.title && v.videoUrl && !DEMO_VIDEO_IDS.has(v.id));
+    }
+  } catch {}
+  return [];
+}
 
 // Load persisted videos from local/session storage
 function loadPersistedVideos(): DojoVideo[] {
@@ -133,6 +185,24 @@ export default function VideosPage() {
     instructor: string;
   } | null>(null);
   const [notification, setNotification] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [isSyncOpen, setIsSyncOpen] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  const getSyncUrl = () => {
+    if (typeof window === "undefined") return "";
+    const payload = exportVideosPayload(videos);
+    return `${window.location.origin}/dashboard/videos?sync=${encodeURIComponent(payload)}`;
+  };
+
+  const handleCopySyncLink = () => {
+    const url = getSyncUrl();
+    if (!url) return;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(url);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 3000);
+    }
+  };
 
   // Form State
   const [formData, setFormData] = useState<{
@@ -153,13 +223,57 @@ export default function VideosPage() {
     description: "",
   });
 
-  // Load persisted videos from storage and sync with server API
+  // Load persisted videos from storage, check URL ?sync= parameter, and sync with server API
   useEffect(() => {
-    const loaded = loadPersistedVideos();
-    setVideos(loaded);
-    savePersistedVideos(loaded);
+    let baseVideos = loadPersistedVideos();
 
-    // Sync with server API so all real videos are permanent across devices & refreshes
+    // 1. Check if URL has ?sync= parameter (from QR code scan or WhatsApp link)
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const syncPayload = urlParams.get("sync");
+      if (syncPayload) {
+        const imported = importVideosPayload(syncPayload);
+        if (imported.length > 0) {
+          const map = new Map<string, DojoVideo>();
+          baseVideos.forEach((v) => map.set(v.id, v));
+          imported.forEach((v) => map.set(v.id, v));
+          baseVideos = Array.from(map.values());
+          savePersistedVideos(baseVideos);
+          setVideos(baseVideos);
+
+          // Sync to server API in background
+          fetch("/api/videos", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ syncBatch: baseVideos }),
+          }).catch(() => {});
+
+          setNotification({
+            type: "success",
+            text: `¡${imported.length} video(s) sincronizados con éxito en este dispositivo!`,
+          });
+          setTimeout(() => setNotification(null), 5000);
+
+          // Clean up the URL parameter without reloading
+          window.history.replaceState({}, document.title, window.location.pathname);
+          return;
+        }
+      }
+    }
+
+    setVideos(baseVideos);
+    savePersistedVideos(baseVideos);
+
+    // 2. If computer already has videos, automatically push them to server
+    if (baseVideos.length > 0) {
+      fetch("/api/videos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ syncBatch: baseVideos }),
+      }).catch(() => {});
+    }
+
+    // 3. Sync with server API
     fetch("/api/videos")
       .then((res) => (res.ok ? res.json() : null))
       .then((serverData) => {
@@ -167,14 +281,16 @@ export default function VideosPage() {
           const validServer = serverData.filter(
             (v: DojoVideo) => v && v.id && !DEMO_VIDEO_IDS.has(v.id)
           );
-          setVideos((current) => {
-            const map = new Map<string, DojoVideo>();
-            current.filter((v) => !DEMO_VIDEO_IDS.has(v.id)).forEach((v) => map.set(v.id, v));
-            validServer.forEach((v: DojoVideo) => map.set(v.id, v));
-            const merged = Array.from(map.values());
-            savePersistedVideos(merged);
-            return merged;
-          });
+          if (validServer.length > 0) {
+            setVideos((current) => {
+              const map = new Map<string, DojoVideo>();
+              current.filter((v) => !DEMO_VIDEO_IDS.has(v.id)).forEach((v) => map.set(v.id, v));
+              validServer.forEach((v: DojoVideo) => map.set(v.id, v));
+              const merged = Array.from(map.values());
+              savePersistedVideos(merged);
+              return merged;
+            });
+          }
         }
       })
       .catch(() => {});
@@ -338,15 +454,36 @@ export default function VideosPage() {
           </p>
         </div>
 
-        {/* Add video button: ONLY visible for Super Admin and Admin */}
-        {isAdmin && (
-          <div className={styles.topActions}>
+        {/* Actions: Sincronizar Celular + Agregar Video */}
+        <div className={styles.topActions} style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap", alignItems: "center" }}>
+          {videos.length > 0 && (
+            <button
+              type="button"
+              className={styles.btnSecondary}
+              onClick={() => setIsSyncOpen(true)}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.45rem",
+                borderColor: "rgba(59, 130, 246, 0.4)",
+                color: "#60a5fa",
+                background: "rgba(59, 130, 246, 0.12)",
+                fontWeight: 600,
+              }}
+              title="Sincronizar estos videos con tu celular"
+            >
+              <Smartphone size={18} />
+              <span>Sincronizar Celular</span>
+            </button>
+          )}
+
+          {isAdmin && (
             <button className={styles.btnPrimary} onClick={() => setIsAddOpen(true)}>
               <Plus size={18} />
               Agregar Video
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Notification Banner */}
@@ -889,6 +1026,72 @@ export default function VideosPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Modal Sincronizar Celular QR */}
+      {isSyncOpen && (
+        <div className={styles.modalOverlay} onClick={() => setIsSyncOpen(false)}>
+          <div
+            className={styles.modalBox}
+            style={{ maxWidth: "480px", textAlign: "center" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={styles.modalHeader}>
+              <div style={{ textAlign: "left" }}>
+                <h2>
+                  <Smartphone size={22} color="#3b82f6" style={{ verticalAlign: "middle", marginRight: "0.5rem" }} />
+                  Sincronizar con tu Celular
+                </h2>
+                <p style={{ fontSize: "0.85rem", color: "#94a3b8", marginTop: "0.25rem" }}>
+                  Transfiere los {videos.length} videos de tu computadora a tu teléfono en segundos.
+                </p>
+              </div>
+              <button className={styles.modalClose} onClick={() => setIsSyncOpen(false)}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ padding: "1.5rem 1rem", display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
+              <div
+                style={{
+                  background: "#fff",
+                  padding: "0.85rem",
+                  borderRadius: "16px",
+                  boxShadow: "0 8px 30px rgba(0,0,0,0.4)",
+                  display: "inline-block",
+                }}
+              >
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=10&data=${encodeURIComponent(getSyncUrl())}`}
+                  alt="Código QR para sincronizar videos"
+                  width={240}
+                  height={240}
+                  style={{ display: "block", borderRadius: "8px" }}
+                />
+              </div>
+
+              <div style={{ fontSize: "0.88rem", color: "#cbd5e1", maxWidth: "380px", lineHeight: "1.4" }}>
+                <strong>Paso 1:</strong> Abre la cámara de tu celular y apunta hacia este código QR.
+                <br />
+                <strong>Paso 2:</strong> Toca el enlace emergente en tu celular. ¡Todos tus videos se guardarán automáticamente en tu teléfono!
+              </div>
+
+              <div style={{ width: "100%", marginTop: "0.5rem", display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+                <button
+                  type="button"
+                  className={styles.btnPrimary}
+                  style={{ width: "100%", justifyContent: "center", gap: "0.5rem" }}
+                  onClick={handleCopySyncLink}
+                >
+                  {copiedLink ? <CheckCircle2 size={18} /> : <Share2 size={18} />}
+                  <span>{copiedLink ? "¡Enlace copiado al portapapeles!" : "Copiar Enlace para WhatsApp / Celular"}</span>
+                </button>
+                <p style={{ fontSize: "0.78rem", color: "#64748b" }}>
+                  También puedes pegarte este enlace por WhatsApp y abrirlo en tu móvil.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       )}

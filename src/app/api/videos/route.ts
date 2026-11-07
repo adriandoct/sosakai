@@ -17,17 +17,24 @@ const DEMO_VIDEO_IDS = new Set([
   "V-BASSAI-01",
 ]);
 
-function getFilePath() {
+function getWritablePath() {
+  if (process.env.VERCEL || process.env.NODE_ENV === "production") {
+    return path.join("/tmp", "sosakai_videos.json");
+  }
+  return path.join(process.cwd(), "src", "data", "videos.json");
+}
+
+function getFallbackPath() {
   return path.join(process.cwd(), "src", "data", "videos.json");
 }
 
 function readVideosFromFile() {
   try {
-    const filePath = getFilePath();
-    if (fs.existsSync(filePath)) {
-      const data = fs.readFileSync(filePath, "utf-8");
+    const writablePath = getWritablePath();
+    if (fs.existsSync(writablePath)) {
+      const data = fs.readFileSync(writablePath, "utf-8");
       const parsed = JSON.parse(data);
-      if (Array.isArray(parsed)) {
+      if (Array.isArray(parsed) && parsed.length > 0) {
         const clean = parsed.filter(
           (v: { id?: string }) => v && v.id && !DEMO_VIDEO_IDS.has(v.id)
         );
@@ -36,6 +43,22 @@ function readVideosFromFile() {
       }
     }
   } catch {}
+
+  try {
+    const fallbackPath = getFallbackPath();
+    if (fs.existsSync(fallbackPath)) {
+      const data = fs.readFileSync(fallbackPath, "utf-8");
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const clean = parsed.filter(
+          (v: { id?: string }) => v && v.id && !DEMO_VIDEO_IDS.has(v.id)
+        );
+        serverVideosCache = clean;
+        return clean;
+      }
+    }
+  } catch {}
+
   return (serverVideosCache as { id?: string }[]).filter(
     (v) => v && v.id && !DEMO_VIDEO_IDS.has(v.id)
   );
@@ -44,8 +67,16 @@ function readVideosFromFile() {
 function saveVideosToFile(videos: unknown[]) {
   serverVideosCache = videos as typeof serverVideosCache;
   try {
-    const filePath = getFilePath();
-    fs.writeFileSync(filePath, JSON.stringify(videos, null, 2), "utf-8");
+    const writablePath = getWritablePath();
+    fs.writeFileSync(writablePath, JSON.stringify(videos, null, 2), "utf-8");
+  } catch {}
+
+  // Also try saving to data/videos.json in local environments
+  try {
+    const fallbackPath = getFallbackPath();
+    if (fallbackPath !== getWritablePath()) {
+      fs.writeFileSync(fallbackPath, JSON.stringify(videos, null, 2), "utf-8");
+    }
   } catch {}
 }
 
@@ -60,12 +91,30 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const newVideo = await req.json();
-    if (!newVideo || !newVideo.title) {
+    const data = await req.json();
+    if (!data) {
       return NextResponse.json({ error: "Datos de video inválidos" }, { status: 400 });
     }
+
     const current = readVideosFromFile();
-    const updated = [newVideo, ...current.filter((v: { id: string }) => v.id !== newVideo.id)];
+    let updated: any[] = [];
+
+    // Support batch sync from client devices
+    if (data.syncBatch && Array.isArray(data.syncBatch)) {
+      const map = new Map<string, any>();
+      current.forEach((v: { id: string }) => map.set(v.id, v));
+      data.syncBatch.forEach((v: { id: string }) => {
+        if (v && v.id && !DEMO_VIDEO_IDS.has(v.id)) {
+          map.set(v.id, v);
+        }
+      });
+      updated = Array.from(map.values());
+    } else if (data.title) {
+      updated = [data, ...current.filter((v: { id: string }) => v.id !== data.id)];
+    } else {
+      return NextResponse.json({ error: "Datos de video inválidos" }, { status: 400 });
+    }
+
     saveVideosToFile(updated);
     return NextResponse.json(updated);
   } catch {
