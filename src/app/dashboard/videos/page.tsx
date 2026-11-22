@@ -14,11 +14,6 @@ import {
   AlertTriangle,
   ShieldAlert,
   Edit3,
-  Smartphone,
-  Download,
-  Upload,
-  Copy,
-  RefreshCw,
 } from "lucide-react";
 import styles from "../dojo-modules.module.css";
 import { useUser } from "../UserContext";
@@ -289,7 +284,6 @@ export default function VideosPage() {
   const [selectedCategory, setSelectedCategory] = useState("Todas");
   const [activeVideo, setActiveVideo] = useState<DojoVideo | null>(null);
   const [isAddOpen, setIsAddOpen] = useState(false);
-  const [showLinksModal, setShowLinksModal] = useState(false);
   const [videoToDelete, setVideoToDelete] = useState<DojoVideo | null>(null);
   const [editingInstructorVideo, setEditingInstructorVideo] = useState<{
     id: string;
@@ -297,8 +291,6 @@ export default function VideosPage() {
     instructor: string;
   } | null>(null);
   const [notification, setNotification] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  const [jsonImportText, setJsonImportText] = useState("");
-  const [showImportBox, setShowImportBox] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState<{
@@ -597,17 +589,7 @@ export default function VideosPage() {
 
         {/* Add video button: ONLY visible for Super Admin and Admin */}
         {isAdmin && (
-          <div className={styles.topActions} style={{ display: "flex", gap: "0.6rem" }}>
-            <button
-              type="button"
-              className={styles.btnSecondary}
-              style={{ fontSize: "0.85rem", padding: "0.55rem 0.9rem", display: "inline-flex", alignItems: "center", gap: "0.4rem" }}
-              onClick={() => setShowLinksModal(true)}
-              title="Sincronizar videos entre dispositivos y respaldar la videoteca"
-            >
-              <RefreshCw size={15} />
-              Sincronizar y Respaldar
-            </button>
+          <div className={styles.topActions}>
             <button className={styles.btnPrimary} onClick={() => setIsAddOpen(true)}>
               <Plus size={18} />
               Agregar Video
@@ -1166,202 +1148,6 @@ export default function VideosPage() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-      {/* View, Sync & Backup Video Hub Modal */}
-      {showLinksModal && (
-        <div className={styles.modalOverlay} onClick={() => setShowLinksModal(false)}>
-          <div className={styles.modalBox} style={{ maxWidth: "620px" }} onClick={(e) => e.stopPropagation()}>
-            <div className={styles.modalHeader}>
-              <h2 style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                <RefreshCw size={22} color="#e60026" />
-                Sincronización y Respaldo de Videos ({videos.length})
-              </h2>
-              <button className={styles.modalClose} onClick={() => setShowLinksModal(false)}>
-                <X size={20} />
-              </button>
-            </div>
-            <div className={styles.modalBody}>
-              <p style={{ color: "#cbd5e1", fontSize: "0.9rem", lineHeight: 1.5 }}>
-                Tus videos quedan guardados permanentemente en tu videoteca. Utiliza estas herramientas para que todos tus videos vinculados sean consistentes y se sincronicen de inmediato con tu celular:
-              </p>
-
-              {/* Action Buttons Hub */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem", margin: "1rem 0" }}>
-                <button
-                  type="button"
-                  className={styles.btnPrimary}
-                  style={{ fontSize: "0.82rem", padding: "0.65rem 0.8rem", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "0.4rem" }}
-                  onClick={() => {
-                    if (typeof window !== "undefined") {
-                      try {
-                        const custom = getCustomVideos();
-                        const listToShare = custom.length > 0 ? custom : videos;
-                        const jsonStr = JSON.stringify(listToShare);
-                        const encoded = btoa(encodeURIComponent(jsonStr));
-                        const shareUrl = `${window.location.origin}/dashboard/videos?sync=${encoded}`;
-                        if (navigator.clipboard) {
-                          navigator.clipboard.writeText(shareUrl);
-                          setNotification({
-                            type: "success",
-                            text: "¡Enlace de sincronización copiado! Envíalo a tu celular (WhatsApp o email) y ábrelo para transferir todos tus videos.",
-                          });
-                          setTimeout(() => setNotification(null), 7000);
-                        }
-                      } catch {}
-                    }
-                  }}
-                  title="Copiar enlace directo para abrir en el celular e importar todo"
-                >
-                  <Smartphone size={16} />
-                  Copiar Enlace para Celular
-                </button>
-
-                <button
-                  type="button"
-                  className={styles.btnSecondary}
-                  style={{ fontSize: "0.82rem", padding: "0.65rem 0.8rem", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "0.4rem" }}
-                  onClick={() => {
-                    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(videos, null, 2));
-                    const dl = document.createElement("a");
-                    dl.setAttribute("href", dataStr);
-                    dl.setAttribute("download", `videoteca-sosakai-${new Date().toISOString().slice(0, 10)}.json`);
-                    document.body.appendChild(dl);
-                    dl.click();
-                    dl.remove();
-                    setNotification({
-                      type: "success",
-                      text: "¡Archivo de respaldo descargado exitosamente!",
-                    });
-                    setTimeout(() => setNotification(null), 4000);
-                  }}
-                >
-                  <Download size={15} />
-                  Descargar Copia JSON
-                </button>
-              </div>
-
-              {/* Toggle Manual Import Box */}
-              <div style={{ marginBottom: "0.75rem" }}>
-                <button
-                  type="button"
-                  style={{ background: "transparent", border: "none", color: "#38bdf8", fontSize: "0.82rem", cursor: "pointer", textDecoration: "underline", padding: 0 }}
-                  onClick={() => setShowImportBox(!showImportBox)}
-                >
-                  {showImportBox ? "Ocultar panel de importación" : "¿Deseas restaurar videos desde un texto o respaldo JSON?"}
-                </button>
-                {showImportBox && (
-                  <div style={{ marginTop: "0.5rem", background: "#0a0c10", padding: "0.85rem", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.08)" }}>
-                    <textarea
-                      rows={3}
-                      placeholder="Pega aquí el JSON de respaldo..."
-                      value={jsonImportText}
-                      onChange={(e) => setJsonImportText(e.target.value)}
-                      style={{ width: "100%", background: "#11141c", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", color: "#f8fafc", padding: "0.5rem", fontSize: "0.8rem" }}
-                    />
-                    <button
-                      type="button"
-                      className={styles.btnSecondary}
-                      style={{ marginTop: "0.5rem", fontSize: "0.78rem", padding: "0.4rem 0.75rem" }}
-                      onClick={() => {
-                        try {
-                          const parsed = JSON.parse(jsonImportText.trim());
-                          if (Array.isArray(parsed) && parsed.length > 0) {
-                            const current = getCustomVideos();
-                            const map = new Map<string, DojoVideo>();
-                            current.forEach((v) => map.set(v.id, v));
-                            parsed.forEach((v: DojoVideo) => {
-                              if (v && v.title && v.videoUrl) {
-                                const id = v.id || `V-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
-                                map.set(id, { ...v, id });
-                                recordUndeletedVideo(id, v.title);
-                              }
-                            });
-                            const merged = Array.from(map.values());
-                            saveCustomVideos(merged);
-                            setVideos(loadAllVideos());
-                            setJsonImportText("");
-                            setShowImportBox(false);
-                            setNotification({
-                              type: "success",
-                              text: `¡${parsed.length} video(s) importados con éxito!`,
-                            });
-                            setTimeout(() => setNotification(null), 4000);
-                          }
-                        } catch {
-                          setNotification({
-                            type: "error",
-                            text: "Formato JSON inválido. Verifica los datos e intenta nuevamente.",
-                          });
-                          setTimeout(() => setNotification(null), 4000);
-                        }
-                      }}
-                    >
-                      <Upload size={13} style={{ marginRight: "0.3rem" }} />
-                      Restaurar Datos
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Videos preview list */}
-              <div
-                style={{
-                  background: "#0a0c10",
-                  padding: "0.85rem",
-                  borderRadius: "10px",
-                  marginTop: "0.5rem",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  maxHeight: "180px",
-                  overflowY: "auto",
-                }}
-              >
-                {videos.map((v) => (
-                  <div key={v.id} style={{ marginBottom: "0.6rem", fontSize: "0.82rem", color: "#f8fafc" }}>
-                    <div>
-                      <strong style={{ color: "#e60026" }}>{v.title}</strong>
-                      <span style={{ color: "#94a3b8", fontSize: "0.78rem", marginLeft: "0.4rem" }}>
-                        ({v.instructor || "Hanshi Jorge Jr."})
-                      </span>
-                    </div>
-                    <div style={{ color: "#38bdf8", wordBreak: "break-all", fontSize: "0.75rem", marginTop: "0.15rem" }}>
-                      {v.videoUrl || "(Sin URL de video)"}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className={styles.modalFooter}>
-              <button
-                type="button"
-                className={styles.btnSecondary}
-                onClick={() => setShowLinksModal(false)}
-              >
-                Cerrar
-              </button>
-              <button
-                type="button"
-                className={styles.btnPrimary}
-                onClick={() => {
-                  const text = videos
-                    .map((v) => `• ${v.title} (${v.instructor || "Hanshi Jorge Jr."}): ${v.videoUrl}`)
-                    .join("\n");
-                  if (navigator.clipboard) {
-                    navigator.clipboard.writeText(text);
-                    setNotification({
-                      type: "success",
-                      text: "¡Lista de enlaces copiada al portapapeles!",
-                    });
-                    setTimeout(() => setNotification(null), 4000);
-                  }
-                  setShowLinksModal(false);
-                }}
-              >
-                <Copy size={15} style={{ marginRight: "0.4rem" }} />
-                Copiar Lista de Enlaces
-              </button>
-            </div>
           </div>
         </div>
       )}
