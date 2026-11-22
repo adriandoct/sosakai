@@ -14,6 +14,11 @@ import {
   AlertTriangle,
   ShieldAlert,
   Edit3,
+  Smartphone,
+  Download,
+  Upload,
+  Copy,
+  RefreshCw,
 } from "lucide-react";
 import styles from "../dojo-modules.module.css";
 import { useUser } from "../UserContext";
@@ -110,86 +115,158 @@ function recordDeletedVideo(id: string, title?: string) {
   } catch {}
 }
 
-// Load persisted videos from local/session storage, merged with official master list
-function loadPersistedVideos(): DojoVideo[] {
-  if (typeof window === "undefined") return (defaultVideos as DojoVideo[]).filter((v) => !isDemoOrBlacklisted(v));
+// Un-delete: When a video is added or edited, ensure it is NEVER blocked by previous deletion records
+function recordUndeletedVideo(id?: string, title?: string) {
+  if (typeof window === "undefined") return;
   try {
     const raw =
-      localStorage.getItem("sosakai_videos_library") ||
-      sessionStorage.getItem("sosakai_videos_library");
-
-    const map = new Map<string, DojoVideo>();
-
-    // 1. Official default videos (unless deleted or demo)
-    (defaultVideos as DojoVideo[]).forEach((v) => {
-      if (v && v.id && !isDemoOrBlacklisted(v) && !isDeleted(v.id, v.title)) {
-        map.set(v.id, v);
-      }
+      localStorage.getItem("sosakai_deleted_videos") ||
+      sessionStorage.getItem("sosakai_deleted_videos");
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return;
+    const normalizedId = id ? id.trim().toLowerCase() : "";
+    const normalizedTitle = title ? title.trim().toLowerCase() : "";
+    const filtered = parsed.filter((item: string) => {
+      const norm = String(item).trim().toLowerCase();
+      if (normalizedId && norm === normalizedId) return false;
+      if (normalizedTitle && norm === normalizedTitle) return false;
+      return true;
     });
+    const json = JSON.stringify(filtered);
+    localStorage.setItem("sosakai_deleted_videos", json);
+    sessionStorage.setItem("sosakai_deleted_videos", json);
+  } catch {}
+}
 
-    // 2. User/admin uploaded videos (unless deleted or demo)
+// Dedicated storage for custom user-added videos so defaults never overwrite or delete them
+function getCustomVideos(): DojoVideo[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw =
+      localStorage.getItem("sosakai_custom_videos") ||
+      sessionStorage.getItem("sosakai_custom_videos") ||
+      localStorage.getItem("sosakai_custom_videos_backup");
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
-        parsed.forEach((v: DojoVideo) => {
-          if (v && v.id && !isDemoOrBlacklisted(v) && !isDeleted(v.id, v.title)) {
-            // If it's one of the official videos, ensure it uses the real YouTube URL and thumbnail
-            const official = (defaultVideos as DojoVideo[]).find(
-              (def) => def.id === v.id || def.title.trim().toLowerCase() === v.title.trim().toLowerCase()
-            );
-            if (
-              official &&
-              (!v.videoUrl ||
-                v.videoUrl.includes("51VZdzaDPro") ||
-                v.thumbnail?.includes("karate-action") ||
-                v.thumbnail?.includes("51VZdzaDPro"))
-            ) {
-              map.set(official.id, official);
-            } else {
-              map.set(v.id, v);
-            }
-          }
-        });
+        return parsed.filter(
+          (v: DojoVideo) => v && v.id && !isDemoOrBlacklisted(v) && !isDeleted(v.id, v.title)
+        );
       }
     }
-
-    return Array.from(map.values());
   } catch {}
-  return (defaultVideos as DojoVideo[]).filter((v) => !isDemoOrBlacklisted(v));
+  return [];
 }
 
+function saveCustomVideos(customList: DojoVideo[]) {
+  if (typeof window === "undefined") return;
+  try {
+    const cleaned = customList.filter(
+      (v) => v && v.id && !isDemoOrBlacklisted(v) && !isDeleted(v.id, v.title)
+    );
+    const json = JSON.stringify(cleaned);
+    localStorage.setItem("sosakai_custom_videos", json);
+    localStorage.setItem("sosakai_custom_videos_backup", json);
+    sessionStorage.setItem("sosakai_custom_videos", json);
+  } catch {}
+}
+
+// Load all videos: Official master catalog + Custom user videos (without duplicates)
+function loadAllVideos(): DojoVideo[] {
+  const map = new Map<string, DojoVideo>();
+
+  // 1. Official default catalog from videos.json
+  (defaultVideos as DojoVideo[]).forEach((v) => {
+    if (v && v.id && !isDemoOrBlacklisted(v) && !isDeleted(v.id, v.title)) {
+      map.set(v.id, v);
+    }
+  });
+
+  // 2. Custom user-added videos (highest priority for user content)
+  const custom = getCustomVideos();
+  custom.forEach((v) => {
+    if (v && v.id && !isDemoOrBlacklisted(v) && !isDeleted(v.id, v.title)) {
+      map.set(v.id, v);
+    }
+  });
+
+  // 3. Migrate from older legacy storage key if present
+  if (typeof window !== "undefined") {
+    try {
+      const legacyRaw = localStorage.getItem("sosakai_videos_library");
+      if (legacyRaw) {
+        const legacy = JSON.parse(legacyRaw);
+        if (Array.isArray(legacy)) {
+          legacy.forEach((v: DojoVideo) => {
+            if (
+              v &&
+              v.id &&
+              !isDemoOrBlacklisted(v) &&
+              !isDeleted(v.id, v.title) &&
+              !map.has(v.id) &&
+              !(defaultVideos as DojoVideo[]).some((def) => def.id === v.id)
+            ) {
+              map.set(v.id, v);
+            }
+          });
+        }
+      }
+    } catch {}
+  }
+
+  return Array.from(map.values());
+}
+
+// Save merged list for backwards compatibility
 function savePersistedVideos(list: DojoVideo[]) {
   if (typeof window === "undefined") return;
   try {
     const cleaned = list.filter((v) => v && v.id && !isDemoOrBlacklisted(v) && !isDeleted(v.id, v.title));
     const json = JSON.stringify(cleaned);
     localStorage.setItem("sosakai_videos_library", json);
-    localStorage.setItem("sosakai_videos_library_backup", json);
     sessionStorage.setItem("sosakai_videos_library", json);
+
+    // Also update custom videos
+    const customOnly = cleaned.filter(
+      (v) => !(defaultVideos as DojoVideo[]).some((def) => def.id === v.id)
+    );
+    saveCustomVideos(customOnly);
   } catch {}
 }
 
-const INITIAL_VIDEOS: DojoVideo[] = defaultVideos as DojoVideo[];
-
-// Helper to convert YouTube/Vimeo URLs to embeddable URLs and extract thumbnails
+// Robust helper to parse and normalize any YouTube or Vimeo input URL or ID
 function parseVideoInput(url: string) {
   const trimmed = url.trim();
+  if (!trimmed) {
+    return {
+      embedUrl: "",
+      thumbnail: "/karate-action.jpg",
+    };
+  }
 
-  // YouTube matchers (standard, short, embed, shorts, live, mobile)
+  // 1. Direct 11-char YouTube ID (e.g. "qfvwey3AdmA")
+  if (/^[\w-]{11}$/.test(trimmed)) {
+    return {
+      embedUrl: `https://www.youtube-nocookie.com/embed/${trimmed}?autoplay=1&rel=0`,
+      thumbnail: `https://img.youtube.com/vi/${trimmed}/hqdefault.jpg`,
+    };
+  }
+
+  // 2. YouTube URLs (watch, embed, v, e, shorts, live, youtu.be, nocookie, mobile)
   const ytMatch = trimmed.match(
-    /(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|shorts\/|live\/|watch\?v=|watch\?.+&v=))([\w-]{11})/
+    /(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:embed\/|v\/|e\/|shorts\/|live\/|watch\?v=|watch\?.+&v=))([\w-]{11})/i
   );
-
   if (ytMatch && ytMatch[1]) {
     const videoId = ytMatch[1];
     return {
-      embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1`,
+      embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0`,
       thumbnail: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
     };
   }
 
-  // Vimeo matcher
-  const vimeoMatch = trimmed.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+  // 3. Vimeo
+  const vimeoMatch = trimmed.match(/vimeo\.com\/(?:video\/)?(\d+)/i);
   if (vimeoMatch && vimeoMatch[1]) {
     return {
       embedUrl: `https://player.vimeo.com/video/${vimeoMatch[1]}?autoplay=1`,
@@ -197,7 +274,7 @@ function parseVideoInput(url: string) {
     };
   }
 
-  // Direct embed or direct link
+  // 4. Direct embed link
   return {
     embedUrl: trimmed,
     thumbnail: "/karate-action.jpg",
@@ -207,9 +284,7 @@ function parseVideoInput(url: string) {
 export default function VideosPage() {
   const { isAdmin, isSuperAdmin, role } = useUser();
 
-  const [videos, setVideos] = useState<DojoVideo[]>(() =>
-    (defaultVideos as DojoVideo[]).filter((v) => !isDemoOrBlacklisted(v))
-  );
+  const [videos, setVideos] = useState<DojoVideo[]>(() => loadAllVideos());
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Todas");
   const [activeVideo, setActiveVideo] = useState<DojoVideo | null>(null);
@@ -222,6 +297,8 @@ export default function VideosPage() {
     instructor: string;
   } | null>(null);
   const [notification, setNotification] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [jsonImportText, setJsonImportText] = useState("");
+  const [showImportBox, setShowImportBox] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState<{
@@ -244,47 +321,79 @@ export default function VideosPage() {
 
   // Load persisted videos from storage and sync with server API
   useEffect(() => {
-    const loaded = loadPersistedVideos();
-    setVideos(loaded);
-    savePersistedVideos(loaded);
+    // 1. Process instant sync URL parameter (?sync=...) if opened via shared link on mobile
+    if (typeof window !== "undefined") {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const syncParam = params.get("sync");
+        if (syncParam) {
+          const jsonStr = decodeURIComponent(atob(syncParam));
+          const imported = JSON.parse(jsonStr);
+          if (Array.isArray(imported) && imported.length > 0) {
+            const currentCustom = getCustomVideos();
+            const map = new Map<string, DojoVideo>();
+            currentCustom.forEach((v) => map.set(v.id, v));
+            imported.forEach((v: DojoVideo) => {
+              if (v && v.title && v.videoUrl) {
+                const vidId = v.id || `V-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+                map.set(vidId, { ...v, id: vidId });
+                recordUndeletedVideo(vidId, v.title);
+              }
+            });
+            const merged = Array.from(map.values());
+            saveCustomVideos(merged);
+            setNotification({
+              type: "success",
+              text: `¡${imported.length} video(s) sincronizados y guardados con éxito en este dispositivo!`,
+            });
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+        }
+      } catch {}
+    }
 
-    // Sync with server API so all real videos are permanent across devices & refreshes
+    // 2. Load all local videos into state
+    const initial = loadAllVideos();
+    setVideos(initial);
+
+    // 3. Bi-directional sync with server API
     fetch("/api/videos")
       .then((res) => (res.ok ? res.json() : null))
       .then((serverData) => {
         if (Array.isArray(serverData)) {
-          const validServer = serverData.filter(
-            (v: DojoVideo) => v && v.id && !isDemoOrBlacklisted(v) && !isDeleted(v.id, v.title)
+          const currentCustom = getCustomVideos();
+          const serverCustom = serverData.filter(
+            (v: DojoVideo) =>
+              v &&
+              v.id &&
+              !isDemoOrBlacklisted(v) &&
+              !isDeleted(v.id, v.title) &&
+              !(defaultVideos as DojoVideo[]).some((def) => def.id === v.id)
           );
-          if (validServer.length > 0) {
-            setVideos((current) => {
-              const map = new Map<string, DojoVideo>();
-              current
-                .filter((v) => !isDemoOrBlacklisted(v) && !isDeleted(v.id, v.title))
-                .forEach((v) => map.set(v.id, v));
-              validServer.forEach((v: DojoVideo) => {
-                if (!map.has(v.id)) {
-                  map.set(v.id, v);
-                } else {
-                  const existing = map.get(v.id)!;
-                  if (
-                    !existing.videoUrl ||
-                    existing.videoUrl.includes("51VZdzaDPro") ||
-                    existing.thumbnail?.includes("karate-action") ||
-                    existing.thumbnail?.includes("51VZdzaDPro")
-                  ) {
-                    map.set(v.id, {
-                      ...existing,
-                      videoUrl: v.videoUrl,
-                      thumbnail: v.thumbnail || existing.thumbnail,
-                    });
-                  }
-                }
-              });
-              const merged = Array.from(map.values());
-              savePersistedVideos(merged);
-              return merged;
+
+          if (serverCustom.length > 0) {
+            const map = new Map<string, DojoVideo>();
+            currentCustom.forEach((v) => map.set(v.id, v));
+            serverCustom.forEach((v: DojoVideo) => {
+              if (!map.has(v.id)) {
+                map.set(v.id, v);
+                recordUndeletedVideo(v.id, v.title);
+              }
             });
+            const merged = Array.from(map.values());
+            saveCustomVideos(merged);
+          }
+
+          const refreshed = loadAllVideos();
+          setVideos(refreshed);
+
+          // Upload any client custom videos to server so other devices get them
+          if (currentCustom.length > 0) {
+            fetch("/api/videos", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ syncBatch: currentCustom }),
+            }).catch(() => {});
           }
         }
       })
@@ -301,7 +410,7 @@ export default function VideosPage() {
       return;
     }
 
-    if (!formData.title || !formData.videoUrl) return;
+    if (!formData.title.trim() || !formData.videoUrl.trim()) return;
 
     const { embedUrl, thumbnail } = parseVideoInput(formData.videoUrl);
 
@@ -311,25 +420,37 @@ export default function VideosPage() {
       category: formData.category,
       duration: formData.duration.trim() || "10:00",
       level: formData.level,
-      instructor: formData.instructor.trim(),
+      instructor: formData.instructor.trim() || "Hanshi Jorge Jr.",
       description: formData.description.trim() || "Video instructivo oficial del Dojo Shito-Ryu Sosa-Kai.",
       videoUrl: embedUrl,
       thumbnail: thumbnail,
     };
 
-    setVideos((prev) => {
-      const currentPersisted = loadPersistedVideos();
-      const base = currentPersisted.length > 0 ? currentPersisted : prev;
-      const updated = [newVideo, ...base.filter((v) => v.id !== newVideo.id)];
-      savePersistedVideos(updated);
-      return updated;
-    });
+    // 1. Remove from deleted identifiers if previously marked
+    recordUndeletedVideo(newVideo.id, newVideo.title);
 
-    // Guardar permanentemente en el servidor
+    // 2. Add to custom videos collection
+    const custom = getCustomVideos();
+    const updatedCustom = [
+      newVideo,
+      ...custom.filter(
+        (v) => v.id !== newVideo.id && v.title.toLowerCase() !== newVideo.title.toLowerCase()
+      ),
+    ];
+    saveCustomVideos(updatedCustom);
+
+    // 3. Update active UI state
+    const all = loadAllVideos();
+    setVideos(all);
+
+    // 4. Save to server API with syncBatch so server runtime never loses it
     fetch("/api/videos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newVideo),
+      body: JSON.stringify({
+        ...newVideo,
+        syncBatch: updatedCustom,
+      }),
     }).catch(() => {});
 
     // Reset Form & show notification
@@ -346,7 +467,7 @@ export default function VideosPage() {
 
     setNotification({
       type: "success",
-      text: `¡Video "${newVideo.title}" agregado con éxito a la videoteca!`,
+      text: `¡Video "${newVideo.title}" vinculado con éxito de forma permanente!`,
     });
     setTimeout(() => setNotification(null), 4000);
   };
@@ -356,15 +477,29 @@ export default function VideosPage() {
     if (!editingInstructorVideo) return;
 
     const newInstructor = editingInstructorVideo.instructor.trim();
-    setVideos((prev) => {
-      const updated = prev.map((v) =>
+
+    // Update in custom videos or add as override
+    const custom = getCustomVideos();
+    const foundInCustom = custom.some((v) => v.id === editingInstructorVideo.id);
+
+    let updatedCustom: DojoVideo[];
+    if (foundInCustom) {
+      updatedCustom = custom.map((v) =>
         v.id === editingInstructorVideo.id ? { ...v, instructor: newInstructor } : v
       );
-      savePersistedVideos(updated);
-      return updated;
-    });
+    } else {
+      const def = (defaultVideos as DojoVideo[]).find((d) => d.id === editingInstructorVideo.id);
+      if (def) {
+        updatedCustom = [...custom, { ...def, instructor: newInstructor }];
+      } else {
+        updatedCustom = custom;
+      }
+    }
+    saveCustomVideos(updatedCustom);
 
-    // Actualizar en el servidor
+    setVideos(loadAllVideos());
+
+    // Inform server API
     fetch("/api/videos", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -398,18 +533,24 @@ export default function VideosPage() {
       return;
     }
 
-    // Registrar ID y título eliminados para que nunca vuelvan a resucitar
+    // 1. Record in deleted blacklist
     recordDeletedVideo(videoToDelete.id, videoToDelete.title);
 
-    setVideos((prev) => {
-      const updated = prev.filter(
-        (v) => v.id !== videoToDelete.id && v.title !== videoToDelete.title
-      );
-      savePersistedVideos(updated);
-      return updated;
-    });
+    // 2. Remove from custom videos
+    const custom = getCustomVideos();
+    const updatedCustom = custom.filter(
+      (v) => v.id !== videoToDelete.id && v.title.toLowerCase() !== videoToDelete.title.toLowerCase()
+    );
+    saveCustomVideos(updatedCustom);
 
-    // Eliminar en el servidor
+    // 3. Update UI state
+    setVideos((prev) =>
+      prev.filter(
+        (v) => v.id !== videoToDelete.id && v.title.toLowerCase() !== videoToDelete.title.toLowerCase()
+      )
+    );
+
+    // 4. Inform server
     fetch("/api/videos", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
@@ -457,25 +598,16 @@ export default function VideosPage() {
         {/* Add video button: ONLY visible for Super Admin and Admin */}
         {isAdmin && (
           <div className={styles.topActions} style={{ display: "flex", gap: "0.6rem" }}>
-            {videos.length > 0 && (
-              <button
-                type="button"
-                className={styles.btnSecondary}
-                style={{ fontSize: "0.85rem", padding: "0.55rem 0.9rem" }}
-                onClick={() => {
-                  const text = videos
-                    .map((v) => `• ${v.title} (${v.instructor || "Hanshi Jorge Jr."}): ${v.videoUrl}`)
-                    .join("\n");
-                  if (navigator.clipboard) {
-                    navigator.clipboard.writeText(text);
-                  }
-                  setShowLinksModal(true);
-                }}
-                title="Ver y copiar los enlaces de tus videos para guardarlos en el servidor"
-              >
-                Copiar Enlaces
-              </button>
-            )}
+            <button
+              type="button"
+              className={styles.btnSecondary}
+              style={{ fontSize: "0.85rem", padding: "0.55rem 0.9rem", display: "inline-flex", alignItems: "center", gap: "0.4rem" }}
+              onClick={() => setShowLinksModal(true)}
+              title="Sincronizar videos entre dispositivos y respaldar la videoteca"
+            >
+              <RefreshCw size={15} />
+              Sincronizar y Respaldar
+            </button>
             <button className={styles.btnPrimary} onClick={() => setIsAddOpen(true)}>
               <Plus size={18} />
               Agregar Video
@@ -1037,40 +1169,163 @@ export default function VideosPage() {
           </div>
         </div>
       )}
-      {/* View & Copy Video Links Modal */}
+      {/* View, Sync & Backup Video Hub Modal */}
       {showLinksModal && (
         <div className={styles.modalOverlay} onClick={() => setShowLinksModal(false)}>
-          <div className={styles.modalBox} style={{ maxWidth: "560px" }} onClick={(e) => e.stopPropagation()}>
+          <div className={styles.modalBox} style={{ maxWidth: "620px" }} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
-              <h2>Enlaces de tus Videos ({videos.length})</h2>
+              <h2 style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <RefreshCw size={22} color="#e60026" />
+                Sincronización y Respaldo de Videos ({videos.length})
+              </h2>
               <button className={styles.modalClose} onClick={() => setShowLinksModal(false)}>
                 <X size={20} />
               </button>
             </div>
             <div className={styles.modalBody}>
               <p style={{ color: "#cbd5e1", fontSize: "0.9rem", lineHeight: 1.5 }}>
-                Estos son los videos y enlaces activos en tu videoteca. Cópialos y pégalos en el chat para integrarlos directamente en el servidor de Vercel y que se vean en cualquier celular.
+                Tus videos quedan guardados permanentemente en tu videoteca. Utiliza estas herramientas para que todos tus videos vinculados sean consistentes y se sincronicen de inmediato con tu celular:
               </p>
+
+              {/* Action Buttons Hub */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem", margin: "1rem 0" }}>
+                <button
+                  type="button"
+                  className={styles.btnPrimary}
+                  style={{ fontSize: "0.82rem", padding: "0.65rem 0.8rem", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "0.4rem" }}
+                  onClick={() => {
+                    if (typeof window !== "undefined") {
+                      try {
+                        const custom = getCustomVideos();
+                        const listToShare = custom.length > 0 ? custom : videos;
+                        const jsonStr = JSON.stringify(listToShare);
+                        const encoded = btoa(encodeURIComponent(jsonStr));
+                        const shareUrl = `${window.location.origin}/dashboard/videos?sync=${encoded}`;
+                        if (navigator.clipboard) {
+                          navigator.clipboard.writeText(shareUrl);
+                          setNotification({
+                            type: "success",
+                            text: "¡Enlace de sincronización copiado! Envíalo a tu celular (WhatsApp o email) y ábrelo para transferir todos tus videos.",
+                          });
+                          setTimeout(() => setNotification(null), 7000);
+                        }
+                      } catch {}
+                    }
+                  }}
+                  title="Copiar enlace directo para abrir en el celular e importar todo"
+                >
+                  <Smartphone size={16} />
+                  Copiar Enlace para Celular
+                </button>
+
+                <button
+                  type="button"
+                  className={styles.btnSecondary}
+                  style={{ fontSize: "0.82rem", padding: "0.65rem 0.8rem", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "0.4rem" }}
+                  onClick={() => {
+                    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(videos, null, 2));
+                    const dl = document.createElement("a");
+                    dl.setAttribute("href", dataStr);
+                    dl.setAttribute("download", `videoteca-sosakai-${new Date().toISOString().slice(0, 10)}.json`);
+                    document.body.appendChild(dl);
+                    dl.click();
+                    dl.remove();
+                    setNotification({
+                      type: "success",
+                      text: "¡Archivo de respaldo descargado exitosamente!",
+                    });
+                    setTimeout(() => setNotification(null), 4000);
+                  }}
+                >
+                  <Download size={15} />
+                  Descargar Copia JSON
+                </button>
+              </div>
+
+              {/* Toggle Manual Import Box */}
+              <div style={{ marginBottom: "0.75rem" }}>
+                <button
+                  type="button"
+                  style={{ background: "transparent", border: "none", color: "#38bdf8", fontSize: "0.82rem", cursor: "pointer", textDecoration: "underline", padding: 0 }}
+                  onClick={() => setShowImportBox(!showImportBox)}
+                >
+                  {showImportBox ? "Ocultar panel de importación" : "¿Deseas restaurar videos desde un texto o respaldo JSON?"}
+                </button>
+                {showImportBox && (
+                  <div style={{ marginTop: "0.5rem", background: "#0a0c10", padding: "0.85rem", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.08)" }}>
+                    <textarea
+                      rows={3}
+                      placeholder="Pega aquí el JSON de respaldo..."
+                      value={jsonImportText}
+                      onChange={(e) => setJsonImportText(e.target.value)}
+                      style={{ width: "100%", background: "#11141c", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", color: "#f8fafc", padding: "0.5rem", fontSize: "0.8rem" }}
+                    />
+                    <button
+                      type="button"
+                      className={styles.btnSecondary}
+                      style={{ marginTop: "0.5rem", fontSize: "0.78rem", padding: "0.4rem 0.75rem" }}
+                      onClick={() => {
+                        try {
+                          const parsed = JSON.parse(jsonImportText.trim());
+                          if (Array.isArray(parsed) && parsed.length > 0) {
+                            const current = getCustomVideos();
+                            const map = new Map<string, DojoVideo>();
+                            current.forEach((v) => map.set(v.id, v));
+                            parsed.forEach((v: DojoVideo) => {
+                              if (v && v.title && v.videoUrl) {
+                                const id = v.id || `V-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+                                map.set(id, { ...v, id });
+                                recordUndeletedVideo(id, v.title);
+                              }
+                            });
+                            const merged = Array.from(map.values());
+                            saveCustomVideos(merged);
+                            setVideos(loadAllVideos());
+                            setJsonImportText("");
+                            setShowImportBox(false);
+                            setNotification({
+                              type: "success",
+                              text: `¡${parsed.length} video(s) importados con éxito!`,
+                            });
+                            setTimeout(() => setNotification(null), 4000);
+                          }
+                        } catch {
+                          setNotification({
+                            type: "error",
+                            text: "Formato JSON inválido. Verifica los datos e intenta nuevamente.",
+                          });
+                          setTimeout(() => setNotification(null), 4000);
+                        }
+                      }}
+                    >
+                      <Upload size={13} style={{ marginRight: "0.3rem" }} />
+                      Restaurar Datos
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Videos preview list */}
               <div
                 style={{
                   background: "#0a0c10",
-                  padding: "1rem",
+                  padding: "0.85rem",
                   borderRadius: "10px",
-                  marginTop: "0.75rem",
+                  marginTop: "0.5rem",
                   border: "1px solid rgba(255,255,255,0.08)",
-                  maxHeight: "220px",
+                  maxHeight: "180px",
                   overflowY: "auto",
                 }}
               >
                 {videos.map((v) => (
-                  <div key={v.id} style={{ marginBottom: "0.75rem", fontSize: "0.85rem", color: "#f8fafc" }}>
+                  <div key={v.id} style={{ marginBottom: "0.6rem", fontSize: "0.82rem", color: "#f8fafc" }}>
                     <div>
                       <strong style={{ color: "#e60026" }}>{v.title}</strong>
-                      <span style={{ color: "#94a3b8", fontSize: "0.8rem", marginLeft: "0.4rem" }}>
+                      <span style={{ color: "#94a3b8", fontSize: "0.78rem", marginLeft: "0.4rem" }}>
                         ({v.instructor || "Hanshi Jorge Jr."})
                       </span>
                     </div>
-                    <div style={{ color: "#38bdf8", wordBreak: "break-all", fontSize: "0.78rem", marginTop: "0.2rem" }}>
+                    <div style={{ color: "#38bdf8", wordBreak: "break-all", fontSize: "0.75rem", marginTop: "0.15rem" }}>
                       {v.videoUrl || "(Sin URL de video)"}
                     </div>
                   </div>
@@ -1096,14 +1351,15 @@ export default function VideosPage() {
                     navigator.clipboard.writeText(text);
                     setNotification({
                       type: "success",
-                      text: "¡Enlaces copiados! Ahora pégalos en el chat para dejarlos grabados en el servidor.",
+                      text: "¡Lista de enlaces copiada al portapapeles!",
                     });
-                    setTimeout(() => setNotification(null), 6000);
+                    setTimeout(() => setNotification(null), 4000);
                   }
                   setShowLinksModal(false);
                 }}
               >
-                Copiar Todo al Portapapeles
+                <Copy size={15} style={{ marginRight: "0.4rem" }} />
+                Copiar Lista de Enlaces
               </button>
             </div>
           </div>

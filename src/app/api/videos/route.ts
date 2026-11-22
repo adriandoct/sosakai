@@ -31,33 +31,48 @@ function getFallbackPath() {
 }
 
 function readVideosFromFile() {
-  const defaults = (defaultVideos as { id: string; title: string; videoUrl: string; thumbnail: string }[]).filter(
-    (v) => v && v.id && !DEMO_VIDEO_IDS.has(v.id)
-  );
+  const defaults = (
+    defaultVideos as { id: string; title: string; videoUrl: string; thumbnail: string }[]
+  ).filter((v) => v && v.id && !DEMO_VIDEO_IDS.has(v.id));
 
+  const map = new Map<string, any>();
+  defaults.forEach((d) => map.set(d.id, d));
+
+  // Merge in-memory server cache
+  if (Array.isArray(serverVideosCache) && serverVideosCache.length > 0) {
+    serverVideosCache.forEach((v: any) => {
+      if (v && v.id && !DEMO_VIDEO_IDS.has(v.id)) {
+        map.set(v.id, v);
+      }
+    });
+  }
+
+  // Merge disk cache if available
   try {
     const writablePath = getWritablePath();
     if (fs.existsSync(writablePath)) {
       const data = fs.readFileSync(writablePath, "utf-8");
       const parsed = JSON.parse(data);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        const clean = parsed
-          .filter((v: { id?: string; title?: string }) => v && v.id && !DEMO_VIDEO_IDS.has(v.id))
-          .map((v: { id: string; title: string; videoUrl: string; thumbnail: string }) => {
-            const def = defaults.find((d) => d.id === v.id || d.title.trim().toLowerCase() === v.title.trim().toLowerCase());
+        parsed.forEach((v: any) => {
+          if (v && v.id && !DEMO_VIDEO_IDS.has(v.id)) {
+            const def = defaults.find(
+              (d) => d.id === v.id || d.title.trim().toLowerCase() === String(v.title || "").trim().toLowerCase()
+            );
             if (def && (!v.videoUrl || v.videoUrl.includes("51VZdzaDPro") || v.thumbnail?.includes("karate-action"))) {
-              return def;
+              map.set(def.id, def);
+            } else {
+              map.set(v.id, v);
             }
-            return v;
-          });
-        serverVideosCache = clean;
-        return clean;
+          }
+        });
       }
     }
   } catch {}
 
-  serverVideosCache = defaults;
-  return defaults;
+  const merged = Array.from(map.values());
+  serverVideosCache = merged;
+  return merged;
 }
 
 function saveVideosToFile(videos: unknown[]) {
