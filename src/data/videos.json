@@ -7,7 +7,7 @@
     "level": "Todos",
     "instructor": "Hanshi Jorge Jr.",
     "description": "Video instructivo oficial del Dojo Shito-Ryu Sosa-Kai.",
-    "videoUrl": "https://www.youtube-nocookie.com/embed/qfvwey3AdmA?autoplay=1",
+    "videoUrl": "https://www.youtube-nocookie.com/embed/qfvwey3AdmA?autoplay=1&rel=0&playsinline=1",
     "thumbnail": "https://img.youtube.com/vi/qfvwey3AdmA/hqdefault.jpg"
   },
   {
@@ -18,7 +18,7 @@
     "level": "Todos",
     "instructor": "Hanshi Jorge Jr.",
     "description": "Video instructivo oficial del Dojo Shito-Ryu Sosa-Kai.",
-    "videoUrl": "https://www.youtube-nocookie.com/embed/oWixk1aW_0k?autoplay=1",
+    "videoUrl": "https://www.youtube-nocookie.com/embed/oWixk1aW_0k?autoplay=1&rel=0&playsinline=1",
     "thumbnail": "https://img.youtube.com/vi/oWixk1aW_0k/hqdefault.jpg"
   },
   {
@@ -29,7 +29,84 @@
     "level": "Todos",
     "instructor": "Hanshi Jorge Jr.",
     "description": "Video instructivo oficial del Dojo Shito-Ryu Sosa-Kai.",
-    "videoUrl": "https://www.youtube-nocookie.com/embed/6ppuEOzWkm8?autoplay=1",
+    "videoUrl": "https://www.youtube-nocookie.com/embed/6ppuEOzWkm8?autoplay=1&rel=0&playsinline=1",
     "thumbnail": "https://img.youtube.com/vi/6ppuEOzWkm8/hqdefault.jpg"
+  },
+  {
+    "id": "SR-SHOSHINSHA-P1",
+    "title": "1 SHOSHINSHA PROGRAM 1",
+    "category": "Katas Básicos",
+    "duration": "10:00",
+    "level": "Todos",
+    "instructor": "Hanshi Jorge Jr.",
+    "description": "Video instructivo oficial del Dojo Shito-Ryu Sosa-Kai.",
+    "videoUrl": "https://www.youtube-nocookie.com/embed/xumZJSX0A5o?autoplay=1&rel=0&playsinline=1",
+    "thumbnail": "https://img.youtube.com/vi/xumZJSX0A5o/hqdefault.jpg"
+  },
+  {
+    "id": "SR-SHOSHINSHA-P2",
+    "title": "2 SHOSHINSHA PROGRAM 2",
+    "category": "Katas Básicos",
+    "duration": "10:00",
+    "level": "Todos",
+    "instructor": "Hanshi Jorge Jr.",
+    "description": "Video instructivo oficial del Dojo Shito-Ryu Sosa-Kai.",
+    "videoUrl": "https://www.youtube-nocookie.com/embed/sa9-dmj6Bio?autoplay=1&rel=0&playsinline=1",
+    "thumbnail": "https://img.youtube.com/vi/sa9-dmj6Bio/hqdefault.jpg"
+  },
+  {
+    "id": "SR-SHOSHINSHA-P3",
+    "title": "3 SHOSHINSHA PROGRAM 3",
+    "category": "Katas Básicos",
+    "duration": "10:00",
+    "level": "Todos",
+    "instructor": "Hanshi Jorge Jr.",
+    "description": "Video instructivo oficial del Dojo Shito-Ryu Sosa-Kai.",
+    "videoUrl": "https://www.youtube-nocookie.com/embed/ZalNVWOQhZw?autoplay=1&rel=0&playsinline=1",
+    "thumbnail": "https://img.youtube.com/vi/ZalNVWOQhZw/hqdefault.jpg"
+  },
+  {
+    "id": "SR-SHOSHINSHA-P4",
+    "title": "4 SHOSHINSHA PROGRAM 4",
+    "category": "Katas Básicos",
+    "duration": "10:00",
+    "level": "Todos",
+    "instructor": "Hanshi Jorge Jr.",
+    "description": "Video instructivo oficial del Dojo Shito-Ryu Sosa-Kai.",
+    "videoUrl": "https://www.youtube-nocookie.com/embed/XWeN3Fg1wr8?autoplay=1&rel=0&playsinline=1",
+    "thumbnail": "https://img.youtube.com/vi/XWeN3Fg1wr8/hqdefault.jpg"
+  },
+  {
+    "id": "SR-SHOSHINSHA-P5",
+    "title": "5 SHOSHINSHA PROGRAM 5",
+    "category": "Katas Básicos",
+    "duration": "10:00",
+    "level": "Todos",
+    "instructor": "Hanshi Jorge Jr.",
+    "description": "Video instructivo oficial del Dojo Shito-Ryu Sosa-Kai.",
+    "videoUrl": "https://www.youtube-nocookie.com/embed/mJAW_NqLZl4?autoplay=1&rel=0&playsinline=1",
+    "thumbnail": "https://img.youtube.com/vi/mJAW_NqLZl4/hqdefault.jpg"
+  },
+  {
+    "id": "SR-SHOSHINSHA-R1",
+    "title": "1 SHOSHINSHA REVIEW 1",
+    "category": "Katas Básicos",
+    "duration": "10:00",
+    "level": "Todos",
+    "instructor": "Hanshi Jorge Jr.",
+    "description": "Video instructivo oficial del Dojo Shito-Ryu Sosa-Kai.",
+    "videoUrl": "https://www.youtube-nocookie.com/embed/qAgu67V084g?autoplay=1&rel=0&playsinline=1",
+    "thumbnail": "https://img.youtube.com/vi/qAgu67V084g/hqdefault.jpg"
+  },
+  {
+    "id": "SR-SHOSHINSHA-R2",
+    "title": "2 SHOSHINSHA REVIEW 2",
+    "category": "Katas Básicos",
+    "duration": "10:00",
+    "level": "Todos",
+    "instructor": "Hanshi Jorge Jr.",
+    "description": "Video instructivo oficial del Dojo Shito-Ryu Sosa-Kai.",
+    "videoUrl": "https://www.youtube-nocookie.com/embed/Qp_haJk4Wn0?autoplay=1&rel=0&playsinline=1",
+    "thumbnail": "https://img.youtube.com/vi/Qp_haJk4Wn0/hqdefault.jpg"
   }
 ]

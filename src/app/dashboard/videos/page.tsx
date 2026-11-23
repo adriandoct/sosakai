@@ -167,26 +167,73 @@ function saveCustomVideos(customList: DojoVideo[]) {
   } catch {}
 }
 
-// Load all videos: Official master catalog + Custom user videos (without duplicates)
+function extractYouTubeId(url?: string): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+  if (/^[\w-]{11}$/.test(trimmed)) return trimmed;
+  const match = trimmed.match(
+    /(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:embed\/|v\/|e\/|shorts\/|live\/|watch\?v=|watch\?.+&v=))([\w-]{11})/i
+  );
+  return match ? match[1] : null;
+}
+
+function getVideoUniqueKey(v: { id?: string; videoUrl?: string; title?: string }): string {
+  const ytId = extractYouTubeId(v.videoUrl);
+  if (ytId) return `yt:${ytId}`;
+  if (v.videoUrl && v.videoUrl.trim()) return `url:${v.videoUrl.trim().toLowerCase()}`;
+  return `id:${v.id || v.title || ""}`;
+}
+
+function getWatchUrl(videoUrl?: string): string | null {
+  const ytId = extractYouTubeId(videoUrl);
+  if (ytId) return `https://www.youtube.com/watch?v=${ytId}`;
+  if (videoUrl && /^https?:\/\//i.test(videoUrl)) return videoUrl;
+  return null;
+}
+
+function getNormalizedEmbedUrl(videoUrl?: string): string {
+  if (!videoUrl) return "";
+  const ytId = extractYouTubeId(videoUrl);
+  if (ytId) {
+    return `https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&rel=0&playsinline=1`;
+  }
+  return videoUrl;
+}
+
+// Load all videos: Official master catalog + Custom user videos (strictly deduplicated by YouTube ID)
 function loadAllVideos(): DojoVideo[] {
   const map = new Map<string, DojoVideo>();
 
-  // 1. Official default catalog from videos.json
+  // 1. Official default catalog from videos.json (global source of truth)
   (defaultVideos as DojoVideo[]).forEach((v) => {
-    if (v && v.id && !isDemoOrBlacklisted(v) && !isDeleted(v.id, v.title)) {
-      map.set(v.id, v);
+    if (v && v.id && v.videoUrl && !isDemoOrBlacklisted(v) && !isDeleted(v.id, v.title)) {
+      map.set(getVideoUniqueKey(v), v);
     }
   });
 
-  // 2. Custom user-added videos (highest priority for user content)
+  // 2. Custom user-added videos (only add if not already in official catalog by YouTube ID, or apply instructor override)
   const custom = getCustomVideos();
+  const remainingCustom: DojoVideo[] = [];
   custom.forEach((v) => {
-    if (v && v.id && !isDemoOrBlacklisted(v) && !isDeleted(v.id, v.title)) {
-      map.set(v.id, v);
+    if (v && v.id && v.videoUrl && !v.videoUrl.includes("51VZdzaDPro") && !isDemoOrBlacklisted(v) && !isDeleted(v.id, v.title)) {
+      const key = getVideoUniqueKey(v);
+      const existing = map.get(key);
+      if (!existing) {
+        map.set(key, v);
+        remainingCustom.push(v);
+      } else if (existing.id === v.id && v.instructor !== existing.instructor) {
+        map.set(key, { ...existing, instructor: v.instructor });
+        remainingCustom.push(v);
+      }
     }
   });
 
-  // 3. Migrate from older legacy storage key if present
+  // Clean up promoted custom entries so localStorage stays deduplicated
+  if (typeof window !== "undefined" && remainingCustom.length !== custom.length) {
+    saveCustomVideos(remainingCustom);
+  }
+
+  // 3. Migrate valid custom entries from older legacy storage key if present
   if (typeof window !== "undefined") {
     try {
       const legacyRaw = localStorage.getItem("sosakai_videos_library");
@@ -197,12 +244,15 @@ function loadAllVideos(): DojoVideo[] {
             if (
               v &&
               v.id &&
+              v.videoUrl &&
+              !v.videoUrl.includes("51VZdzaDPro") &&
               !isDemoOrBlacklisted(v) &&
-              !isDeleted(v.id, v.title) &&
-              !map.has(v.id) &&
-              !(defaultVideos as DojoVideo[]).some((def) => def.id === v.id)
+              !isDeleted(v.id, v.title)
             ) {
-              map.set(v.id, v);
+              const key = getVideoUniqueKey(v);
+              if (!map.has(key)) {
+                map.set(key, v);
+              }
             }
           });
         }
@@ -243,7 +293,7 @@ function parseVideoInput(url: string) {
   // 1. Direct 11-char YouTube ID (e.g. "qfvwey3AdmA")
   if (/^[\w-]{11}$/.test(trimmed)) {
     return {
-      embedUrl: `https://www.youtube-nocookie.com/embed/${trimmed}?autoplay=1&rel=0`,
+      embedUrl: `https://www.youtube-nocookie.com/embed/${trimmed}?autoplay=1&rel=0&playsinline=1`,
       thumbnail: `https://img.youtube.com/vi/${trimmed}/hqdefault.jpg`,
     };
   }
@@ -255,7 +305,7 @@ function parseVideoInput(url: string) {
   if (ytMatch && ytMatch[1]) {
     const videoId = ytMatch[1];
     return {
-      embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0`,
+      embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0&playsinline=1`,
       thumbnail: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
     };
   }
@@ -348,27 +398,32 @@ export default function VideosPage() {
     const initial = loadAllVideos();
     setVideos(initial);
 
-    // 3. Bi-directional sync with server API
-    fetch("/api/videos")
+    // 3. Bi-directional sync with server API (always bypass browser/CDN cache for global consistency)
+    fetch("/api/videos", { cache: "no-store" })
       .then((res) => (res.ok ? res.json() : null))
       .then((serverData) => {
         if (Array.isArray(serverData)) {
+          const defaultKeys = new Set(
+            (defaultVideos as DojoVideo[]).map((def) => getVideoUniqueKey(def))
+          );
           const currentCustom = getCustomVideos();
           const serverCustom = serverData.filter(
             (v: DojoVideo) =>
               v &&
               v.id &&
+              v.videoUrl &&
               !isDemoOrBlacklisted(v) &&
               !isDeleted(v.id, v.title) &&
-              !(defaultVideos as DojoVideo[]).some((def) => def.id === v.id)
+              !defaultKeys.has(getVideoUniqueKey(v))
           );
 
           if (serverCustom.length > 0) {
             const map = new Map<string, DojoVideo>();
-            currentCustom.forEach((v) => map.set(v.id, v));
+            currentCustom.forEach((v) => map.set(getVideoUniqueKey(v), v));
             serverCustom.forEach((v: DojoVideo) => {
-              if (!map.has(v.id)) {
-                map.set(v.id, v);
+              const key = getVideoUniqueKey(v);
+              if (!map.has(key)) {
+                map.set(key, v);
                 recordUndeletedVideo(v.id, v.title);
               }
             });
@@ -379,12 +434,13 @@ export default function VideosPage() {
           const refreshed = loadAllVideos();
           setVideos(refreshed);
 
-          // Upload any client custom videos to server so other devices get them
-          if (currentCustom.length > 0) {
+          // Upload any client custom videos to server so other devices/countries get them
+          const pendingCustom = getCustomVideos();
+          if (pendingCustom.length > 0) {
             fetch("/api/videos", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ syncBatch: currentCustom }),
+              body: JSON.stringify({ syncBatch: pendingCustom }),
             }).catch(() => {});
           }
         }
@@ -546,7 +602,7 @@ export default function VideosPage() {
     fetch("/api/videos", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: videoToDelete.id }),
+      body: JSON.stringify({ id: videoToDelete.id, videoUrl: videoToDelete.videoUrl }),
     }).catch(() => {});
 
     const deletedTitle = videoToDelete.title;
@@ -884,9 +940,10 @@ export default function VideosPage() {
             {activeVideo.videoUrl ? (
               <div style={{ position: "relative", width: "100%", paddingBottom: "56.25%", background: "#000" }}>
                 <iframe
-                  src={activeVideo.videoUrl}
+                  src={getNormalizedEmbedUrl(activeVideo.videoUrl)}
                   title={activeVideo.title}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  referrerPolicy="strict-origin-when-cross-origin"
                   allowFullScreen
                   style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: "none" }}
                 ></iframe>
@@ -896,15 +953,27 @@ export default function VideosPage() {
                 <Video size={48} color="#e60026" style={{ margin: "0 auto 1rem" }} />
                 <h3 style={{ color: "#f8fafc", marginBottom: "0.5rem" }}>Enlace de video en sincronización</h3>
                 <p style={{ color: "#94a3b8", fontSize: "0.9rem" }}>
-                  Este video está registrado en la videoteca oficial. Si tienes el enlace de YouTube en tu computadora, haz clic en "Copiar Enlaces" y pégalo en el chat para integrarlo.
+                  Este video está registrado en la videoteca oficial del Dojo Shito-Ryu Sosa-Kai.
                 </p>
               </div>
             )}
 
-            <div className={styles.modalBody}>
-              <p style={{ color: "#cbd5e1", fontSize: "0.95rem", lineHeight: 1.6 }}>
+            <div className={styles.modalBody} style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: "0.75rem" }}>
+              <p style={{ color: "#cbd5e1", fontSize: "0.95rem", lineHeight: 1.6, margin: 0, flex: 1 }}>
                 {activeVideo.description}
               </p>
+              {getWatchUrl(activeVideo.videoUrl) && (
+                <a
+                  href={getWatchUrl(activeVideo.videoUrl)!}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.btnSecondary}
+                  style={{ fontSize: "0.82rem", padding: "0.45rem 0.85rem", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "0.4rem", whiteSpace: "nowrap" }}
+                >
+                  <Play size={14} />
+                  Abrir en YouTube
+                </a>
+              )}
             </div>
           </div>
         </div>
